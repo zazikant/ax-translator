@@ -156,9 +156,26 @@ function estimateTokens(text: string): number {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AxTranslatorPage() {
-  // API Key state
-  const [apiKey, setApiKey] = useState('');
+  // API Key state — persist in sessionStorage so it survives page refreshes
+  const [apiKey, setApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('nvidia_api_key') || '';
+    }
+    return '';
+  });
   const [showApiKey, setShowApiKey] = useState(false);
+
+  // Persist API key to sessionStorage whenever it changes
+  const handleApiKeyChange = (value: string) => {
+    setApiKey(value);
+    if (typeof window !== 'undefined') {
+      if (value) {
+        sessionStorage.setItem('nvidia_api_key', value);
+      } else {
+        sessionStorage.removeItem('nvidia_api_key');
+      }
+    }
+  };
 
   // Translation input state
   const [inputText, setInputText] = useState('');
@@ -252,6 +269,11 @@ export default function AxTranslatorPage() {
             return;
           }
 
+          // Echo detection per chunk
+          if (data.translatedText.trim() === chunks[i].trim()) {
+            console.warn(`[Translate] Chunk ${i + 1} returned same text — model echo detected`);
+          }
+
           translatedChunks.push(data.translatedText);
           totalQuality += data.qualityScore;
           totalAttempts += data.attempts;
@@ -295,15 +317,28 @@ export default function AxTranslatorPage() {
         const data = await response.json();
 
         if (!response.ok) {
-          setError(data.error || 'Translation failed');
+          // Check for Vercel timeout specifically
+          if (response.status === 504 || (data.error && data.error.includes('timeout'))) {
+            setError('Translation timed out on server. This usually happens on Vercel Hobby plan. Set NVIDIA_API_KEY env var on Vercel for the full pipeline, or try shorter text.');
+          } else {
+            setError(data.error || 'Translation failed');
+          }
           setIsTranslating(false);
           setCurrentStage('');
           return;
         }
 
-        // Safety check: if translated text is empty or same as input, show warning
+        // Safety check: if translated text is empty, show error
         if (!data.translatedText || data.translatedText.trim() === '') {
           setError('Translation returned empty result. Please try again.');
+          setIsTranslating(false);
+          setCurrentStage('');
+          return;
+        }
+
+        // Safety check: if translated text is identical to input (echo), show warning
+        if (data.translatedText.trim() === inputText.trim() && sourceLanguage !== targetLanguage && sourceLanguage !== 'auto') {
+          setError('The translation appears identical to the input text. The model may not have translated properly. Please try again.');
           setIsTranslating(false);
           setCurrentStage('');
           return;
@@ -432,7 +467,7 @@ export default function AxTranslatorPage() {
                   <CardTitle className="text-base">NVIDIA API Key</CardTitle>
                 </div>
                 <CardDescription>
-                  Your API key is used only for this session and never stored on our servers. Get one from{' '}
+                  Your API key is saved in your browser session (survives refresh, cleared on tab close). Get one from{' '}
                   <a
                     href="https://build.nvidia.com/"
                     target="_blank"
@@ -449,7 +484,7 @@ export default function AxTranslatorPage() {
                     type={showApiKey ? 'text' : 'password'}
                     placeholder="nvapi-..."
                     value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
+                    onChange={(e) => handleApiKeyChange(e.target.value)}
                     className="pr-10 font-mono"
                   />
                   <Button

@@ -10,6 +10,7 @@
  * If Temporal server is not available, falls back to direct execution mode.
  */
 
+import { createServer as createHttpServer, type IncomingMessage, type ServerResponse } from 'http';
 import { Worker, NativeConnection } from '@temporalio/worker';
 import * as activities from './activities';
 import { translateWorkflow } from './workflows';
@@ -28,7 +29,7 @@ interface TranslationJob {
     sourceLanguage: string;
     targetLanguage: string;
   };
-  output?: any;
+  output?: Record<string, unknown>;
   error?: string;
   createdAt: number;
   completedAt?: number;
@@ -44,7 +45,7 @@ async function executeTranslationDirect(
   targetLanguage: string,
   apiKey: string,
   model?: string
-): Promise<any> {
+): Promise<Record<string, unknown>> {
   // Step 1: Translate
   const translateResult = await activities.translateText({
     text,
@@ -122,139 +123,133 @@ async function executeTranslationDirect(
 
 // ─── HTTP Server ─────────────────────────────────────────────────────────────
 
-function createServer() {
-  const { Server } = require('http');
-
-  const server = Server(async (req: any, res: any) => {
-    // CORS
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204);
-      res.end();
-      return;
-    }
-
-    const url = new URL(req.url, `http://localhost:${PORT}`);
-    const path = url.pathname;
-
-    // ─── POST /api/translate — Start a translation ───────────────────────
-
-    if (req.method === 'POST' && path === '/api/translate') {
-      try {
-        const body = await readBody(req);
-        const { text, sourceLanguage, targetLanguage, apiKey, model } = JSON.parse(body);
-
-        if (!text || !targetLanguage || !apiKey) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Missing required fields: text, targetLanguage, apiKey' }));
-          return;
-        }
-
-        const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        const job: TranslationJob = {
-          id: jobId,
-          status: 'running',
-          input: { text, sourceLanguage: sourceLanguage || 'auto', targetLanguage },
-          createdAt: Date.now(),
-        };
-        jobs.set(jobId, job);
-
-        // Execute translation (direct mode or Temporal)
-        executeTranslationDirect(text, sourceLanguage || 'auto', targetLanguage, apiKey, model)
-          .then((output) => {
-            job.status = 'completed';
-            job.output = output;
-            job.completedAt = Date.now();
-          })
-          .catch((err) => {
-            job.status = 'failed';
-            job.error = err?.message ?? String(err);
-            job.completedAt = Date.now();
-          });
-
-        res.writeHead(202, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ jobId, status: 'running' }));
-      } catch (err: any) {
-        res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err?.message ?? 'Invalid request' }));
-      }
-      return;
-    }
-
-    // ─── POST /api/translate/sync — Synchronous translation ──────────────
-
-    if (req.method === 'POST' && path === '/api/translate/sync') {
-      try {
-        const body = await readBody(req);
-        const { text, sourceLanguage, targetLanguage, apiKey, model } = JSON.parse(body);
-
-        if (!text || !targetLanguage || !apiKey) {
-          res.writeHead(400, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: 'Missing required fields: text, targetLanguage, apiKey' }));
-          return;
-        }
-
-        const result = await executeTranslationDirect(
-          text,
-          sourceLanguage || 'auto',
-          targetLanguage,
-          apiKey,
-          model
-        );
-
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result));
-      } catch (err: any) {
-        res.writeHead(500, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: err?.message ?? 'Translation failed' }));
-      }
-      return;
-    }
-
-    // ─── GET /api/translate/:jobId — Check translation status ────────────
-
-    if (req.method === 'GET' && path.startsWith('/api/translate/')) {
-      const jobId = path.replace('/api/translate/', '');
-      const job = jobs.get(jobId);
-
-      if (!job) {
-        res.writeHead(404, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Job not found' }));
-        return;
-      }
-
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(job));
-      return;
-    }
-
-    // ─── GET /health — Health check ──────────────────────────────────────
-
-    if (req.method === 'GET' && path === '/health') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', service: 'ax-translator', temporal: 'direct-mode' }));
-      return;
-    }
-
-    // ─── 404 ─────────────────────────────────────────────────────────────
-
-    res.writeHead(404, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Not found' }));
-  });
-
-  return server;
-}
-
-function readBody(req: any): Promise<string> {
+function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = '';
-    req.on('data', (chunk: string) => { body += chunk; });
+    req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
     req.on('end', () => resolve(body));
     req.on('error', reject);
   });
+}
+
+async function handleRequest(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  // CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
+
+  const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
+  const path = url.pathname;
+
+  // ─── POST /api/translate — Start a translation (async) ────────────────
+
+  if (req.method === 'POST' && path === '/api/translate') {
+    try {
+      const body = await readBody(req);
+      const { text, sourceLanguage, targetLanguage, apiKey, model } = JSON.parse(body);
+
+      if (!text || !targetLanguage || !apiKey) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing required fields: text, targetLanguage, apiKey' }));
+        return;
+      }
+
+      const jobId = `job-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      const job: TranslationJob = {
+        id: jobId,
+        status: 'running',
+        input: { text, sourceLanguage: sourceLanguage || 'auto', targetLanguage },
+        createdAt: Date.now(),
+      };
+      jobs.set(jobId, job);
+
+      // Execute translation (direct mode or Temporal)
+      executeTranslationDirect(text, sourceLanguage || 'auto', targetLanguage, apiKey, model)
+        .then((output) => {
+          job.status = 'completed';
+          job.output = output;
+          job.completedAt = Date.now();
+        })
+        .catch((err: unknown) => {
+          job.status = 'failed';
+          job.error = err instanceof Error ? err.message : String(err);
+          job.completedAt = Date.now();
+        });
+
+      res.writeHead(202, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ jobId, status: 'running' }));
+    } catch (err: unknown) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : 'Invalid request' }));
+    }
+    return;
+  }
+
+  // ─── POST /api/translate/sync — Synchronous translation ──────────────
+
+  if (req.method === 'POST' && path === '/api/translate/sync') {
+    try {
+      const body = await readBody(req);
+      const { text, sourceLanguage, targetLanguage, apiKey, model } = JSON.parse(body);
+
+      if (!text || !targetLanguage || !apiKey) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Missing required fields: text, targetLanguage, apiKey' }));
+        return;
+      }
+
+      const result = await executeTranslationDirect(
+        text,
+        sourceLanguage || 'auto',
+        targetLanguage,
+        apiKey,
+        model
+      );
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(result));
+    } catch (err: unknown) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : 'Translation failed' }));
+    }
+    return;
+  }
+
+  // ─── GET /api/translate/:jobId — Check translation status ────────────
+
+  if (req.method === 'GET' && path.startsWith('/api/translate/')) {
+    const jobId = path.replace('/api/translate/', '');
+    const job = jobs.get(jobId);
+
+    if (!job) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Job not found' }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(job));
+    return;
+  }
+
+  // ─── GET /health — Health check ──────────────────────────────────────
+
+  if (req.method === 'GET' && path === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', service: 'ax-translator', temporal: 'direct-mode' }));
+    return;
+  }
+
+  // ─── 404 ─────────────────────────────────────────────────────────────
+
+  res.writeHead(404, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ error: 'Not found' }));
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
@@ -263,7 +258,7 @@ async function main() {
   console.log('[Ax Translator] Starting service...');
 
   // Start HTTP server
-  const server = createServer();
+  const server = createHttpServer(handleRequest);
   server.listen(PORT, () => {
     console.log(`[Ax Translator] HTTP server listening on port ${PORT}`);
   });
@@ -279,14 +274,15 @@ async function main() {
       connection,
       namespace: 'default',
       taskQueue: TASK_QUEUE,
-      workflowsPath: require.resolve('./workflows'),
+      workflowsPath: import.meta.url.replace('index.ts', 'workflows.ts'),
       activities,
     });
 
     console.log('[Ax Translator] Temporal worker registered, starting...');
     await worker.run();
-  } catch (err: any) {
-    console.log(`[Ax Translator] Temporal not available (${err?.message ?? err}), running in direct execution mode`);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`[Ax Translator] Temporal not available (${msg}), running in direct execution mode`);
     // Keep HTTP server running in direct mode — already started above
   }
 }

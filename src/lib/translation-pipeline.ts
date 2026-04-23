@@ -49,6 +49,27 @@ interface ErrorEntry {
   issues?: string[];
 }
 
+// ─── Token Estimation ────────────────────────────────────────────────────────
+// Rough: 1 token ≈ 4 chars for English, 2 chars for CJK
+
+function estimateTokens(text: string): number {
+  const cjkChars = (text.match(/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g) || []).length;
+  const otherChars = text.length - cjkChars;
+  return Math.ceil(cjkChars / 2 + otherChars / 4);
+}
+
+/**
+ * Calculate max_tokens for the output based on input length.
+ * GPT-OSS-120B supports large context; we give generous output budget.
+ * Translation length ≈ input length × 1.5 (safety margin for longer target languages).
+ * Minimum 2048, maximum 16384.
+ */
+function calculateMaxTokens(inputText: string): number {
+  const inputTokens = estimateTokens(inputText);
+  const outputTokens = Math.ceil(inputTokens * 1.5);
+  return Math.max(2048, Math.min(16384, outputTokens));
+}
+
 // ─── Echo Detection ─────────────────────────────────────────────────────────
 // If the LLM returns the same text it was given (instead of translating),
 // we detect it and retry with a more forceful prompt.
@@ -128,7 +149,10 @@ Rules:
 
   console.log(`[Pipeline] translateText (retry=${isRetry}): src=${srcLabel}, target=${targetLabel}, input length=${input.text.length}`);
 
-  const result = await callNvidiaLLM(systemPrompt, userContent, input.apiKey, input.model, 2048, 0.3);
+  const maxTokens = calculateMaxTokens(input.text);
+  console.log(`[Pipeline] Dynamic max_tokens: ${maxTokens} (input est. ${estimateTokens(input.text)} tokens)`);
+
+  const result = await callNvidiaLLM(systemPrompt, userContent, input.apiKey, input.model, maxTokens, 0.3);
 
   // Strip any markdown code blocks or quotes the LLM might add
   const cleaned = result
@@ -226,7 +250,7 @@ ${translatedText}
 Issues found with the current translation:
 ${issuesList}`;
 
-  const result = await callNvidiaLLM(systemPrompt, userContent, input.apiKey, input.model, 2048, 0.2);
+  const result = await callNvidiaLLM(systemPrompt, userContent, input.apiKey, input.model, calculateMaxTokens(translatedText), 0.2);
 
   return result
     .replace(/^```[\w]*\n?/m, '')

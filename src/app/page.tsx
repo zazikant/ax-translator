@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -43,6 +43,7 @@ import {
   RefreshCw,
   History,
   Info,
+  Download,
 } from 'lucide-react';
 
 // ─── Language Options ────────────────────────────────────────────────────────
@@ -85,11 +86,7 @@ interface TranslationResult {
   refinements: number;
   issues?: string[];
   model: string;
-  errorHistory?: Array<{
-    attempt: number;
-    stage: string;
-    error: string;
-  }>;
+  pipeline?: string[];
 }
 
 interface HistoryEntry {
@@ -107,7 +104,54 @@ const STAGE_LABELS: Record<string, string> = {
   translate: 'Translating',
   validate: 'Validating quality',
   refine: 'Refining translation',
+  chunking: 'Processing chunks',
 };
+
+// ─── Safe Clipboard for Large Text ───────────────────────────────────────────
+// navigator.clipboard.writeText() crashes on very large strings in some browsers.
+// This uses a hidden textarea + execCommand fallback for large text.
+
+function safeCopyToClipboard(text: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    // For small text, use the modern API
+    if (text.length < 100_000) {
+      navigator.clipboard.writeText(text)
+        .then(() => resolve(true))
+        .catch(() => fallbackCopy(text, resolve));
+      return;
+    }
+    // For large text (30K+ tokens = potentially 200K+ chars), use fallback
+    fallbackCopy(text, resolve);
+  });
+}
+
+function fallbackCopy(text: string, resolve: (val: boolean) => void) {
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    // Position off-screen to avoid flash
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '-9999px';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const success = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    resolve(success);
+  } catch {
+    resolve(false);
+  }
+}
+
+// ─── Estimate tokens (rough: 1 token ≈ 4 chars for English, 2 chars for CJK) ──
+
+function estimateTokens(text: string): number {
+  const cjkChars = (text.match(/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g) || []).length;
+  const otherChars = text.length - cjkChars;
+  return Math.ceil(cjkChars / 2 + otherChars / 4);
+}
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -128,6 +172,7 @@ export default function AxTranslatorPage() {
   // Loading state
   const [isTranslating, setIsTranslating] = useState(false);
   const [currentStage, setCurrentStage] = useState<string>('');
+  const [chunkProgress, setChunkProgress] = useState<{ done: number; total: number } | null>(null);
 
   // History
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -135,7 +180,15 @@ export default function AxTranslatorPage() {
   // Copy state
   const [copied, setCopied] = useState(false);
 
-  // ─── Handle Translate ──────────────────────────────────────────────────
+  // Ref for the output textarea (for large text rendering)
+  const outputRef = useRef<HTMLDivElement>(null);
+
+  // ─── Estimated tokens for input ──────────────────────────────────────
+
+  const inputTokens = estimateTokens(inputText);
+  const isLargeInput = inputTokens > 8000;
+
+  // ─── Handle Translate (with chunking for large text) ─────────────────
 
   const handleTranslate = useCallback(async () => {
     if (!inputText.trim()) return;
@@ -152,59 +205,120 @@ export default function AxTranslatorPage() {
     setError(null);
     setResult(null);
     setCurrentStage('translate');
-
-    // Simulate stage progression for UI feedback
-    const stageTimer = setInterval(() => {
-      setCurrentStage((prev) => {
-        if (prev === 'translate') return 'validate';
-        if (prev === 'validate') return 'refine';
-        return prev;
-      });
-    }, 3000);
+    setChunkProgress(null);
 
     try {
-      const response = await fetch('/api/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: inputText,
-          sourceLanguage,
-          targetLanguage,
-          apiKey,
-        }),
-      });
+      // For large text (>8K tokens), chunk and translate in parts
+      if (isLargeInput) {
+        setCurrentStage('chunking');
+        const chunks = splitIntoChunks(inputText, 6000); // ~6K tokens per chunk
+        setChunkProgress({ done: 0, total: chunks.length });
 
-      clearInterval(stageTimer);
+        const translatedChunks: string[] = [];
+        let totalQuality = 0;
+        let totalAttempts = 0;
+        let totalRefinements = 0;
 
-      const data = await response.json();
+        for (let i = 0; i < chunks.length; i++) {
+          setCurrentStage('translate');
+          setChunkProgress({ done: i, total: chunks.length });
 
-      if (!response.ok) {
-        setError(data.error || 'Translation failed');
-        return;
+          const response = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: chunks[i],
+              sourceLanguage,
+              targetLanguage,
+              apiKey,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            setError(data.error || `Translation failed on chunk ${i + 1}/${chunks.length}`);
+            setIsTranslating(false);
+            setCurrentStage('');
+            setChunkProgress(null);
+            return;
+          }
+
+          translatedChunks.push(data.translatedText);
+          totalQuality += data.qualityScore;
+          totalAttempts += data.attempts;
+          totalRefinements += data.refinements;
+        }
+
+        setChunkProgress({ done: chunks.length, total: chunks.length });
+        const combinedResult: TranslationResult = {
+          translatedText: translatedChunks.join('\n\n'),
+          qualityScore: Math.round(totalQuality / chunks.length),
+          attempts: totalAttempts,
+          refinements: totalRefinements,
+          model: 'openai/gpt-oss-120b',
+          pipeline: [`chunked-${chunks.length}`],
+        };
+        setResult(combinedResult);
+        addHistory(inputText, combinedResult);
+      } else {
+        // Normal single-request translation
+        const stageTimer = setInterval(() => {
+          setCurrentStage((prev) => {
+            if (prev === 'translate') return 'validate';
+            if (prev === 'validate') return 'refine';
+            return prev;
+          });
+        }, 3000);
+
+        const response = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: inputText,
+            sourceLanguage,
+            targetLanguage,
+            apiKey,
+          }),
+        });
+
+        clearInterval(stageTimer);
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          setError(data.error || 'Translation failed');
+          return;
+        }
+
+        setResult(data);
+        addHistory(inputText, data);
       }
-
-      setResult(data);
-
-      // Add to history
-      const entry: HistoryEntry = {
-        id: `h-${Date.now()}`,
-        input: inputText.substring(0, 100),
-        sourceLanguage,
-        targetLanguage,
-        result: data,
-        timestamp: Date.now(),
-      };
-      setHistory((prev) => [entry, ...prev].slice(0, 20));
-    } catch (err: any) {
-      clearInterval(stageTimer);
-      setError(err?.message || 'Network error occurred');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Network error occurred';
+      setError(msg);
     } finally {
       setIsTranslating(false);
       setCurrentStage('');
+      setChunkProgress(null);
     }
-  }, [inputText, sourceLanguage, targetLanguage, apiKey]);
+  }, [inputText, sourceLanguage, targetLanguage, apiKey, isLargeInput]);
 
-  // ─── Swap Languages ────────────────────────────────────────────────────
+  // ─── Add to History ──────────────────────────────────────────────────
+
+  const addHistory = useCallback((text: string, data: TranslationResult) => {
+    const entry: HistoryEntry = {
+      id: `h-${Date.now()}`,
+      input: text.substring(0, 100),
+      sourceLanguage,
+      targetLanguage,
+      result: data,
+      timestamp: Date.now(),
+    };
+    setHistory((prev) => [entry, ...prev].slice(0, 20));
+  }, [sourceLanguage, targetLanguage]);
+
+  // ─── Swap Languages ──────────────────────────────────────────────────
 
   const handleSwapLanguages = () => {
     if (sourceLanguage === 'auto') return;
@@ -212,28 +326,46 @@ export default function AxTranslatorPage() {
     setTargetLanguage(sourceLanguage);
   };
 
-  // ─── Copy to Clipboard ────────────────────────────────────────────────
+  // ─── Copy to Clipboard (safe for large text) ────────────────────────
 
   const handleCopy = async () => {
     if (!result?.translatedText) return;
-    await navigator.clipboard.writeText(result.translatedText);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await safeCopyToClipboard(result.translatedText);
+    if (success) {
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      setCopied(false);
+    }
   };
 
-  // ─── Quality Score Color ──────────────────────────────────────────────
+  // ─── Download as .txt (for very large translations) ──────────────────
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-emerald-500';
-    if (score >= 60) return 'text-amber-500';
-    return 'text-red-500';
+  const handleDownload = () => {
+    if (!result?.translatedText) return;
+    const blob = new Blob([result.translatedText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `translation-${targetLanguage}-${Date.now()}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
+
+  // ─── Quality Score helpers ──────────────────────────────────────────
 
   const getScoreVariant = (score: number): 'default' | 'secondary' | 'destructive' => {
     if (score >= 80) return 'default';
     if (score >= 60) return 'secondary';
     return 'destructive';
   };
+
+  // ─── Output text length display ──────────────────────────────────────
+
+  const outputChars = result?.translatedText.length ?? 0;
+  const outputTokens = result ? estimateTokens(result.translatedText) : 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -376,20 +508,32 @@ export default function AxTranslatorPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Input Text</CardTitle>
-                    <span className="text-xs text-muted-foreground">
-                      {inputText.length} chars
-                    </span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{inputText.length.toLocaleString()} chars</span>
+                      <span className="text-border">|</span>
+                      <span className={isLargeInput ? 'text-amber-500 font-medium' : ''}>
+                        ~{inputTokens.toLocaleString()} tokens
+                      </span>
+                      {isLargeInput && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0">Chunked</Badge>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="flex-1">
                   <Textarea
-                    placeholder="Enter text to translate... (e.g., jargon-heavy paragraph, technical content, unclear writing)"
+                    placeholder="Enter text to translate... Supports up to 30K+ tokens (auto-chunked)"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    className="min-h-[200px] resize-none"
+                    className="min-h-[200px] max-h-[500px] resize-y"
                   />
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex-col gap-2">
+                  {isLargeInput && inputText.trim() && (
+                    <p className="text-xs text-amber-500 text-center">
+                      Large text detected — will be translated in {Math.ceil(inputTokens / 6000)} chunks
+                    </p>
+                  )}
                   <Button
                     onClick={handleTranslate}
                     disabled={isTranslating || !inputText.trim() || !apiKey.trim()}
@@ -399,7 +543,9 @@ export default function AxTranslatorPage() {
                     {isTranslating ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        {STAGE_LABELS[currentStage] || 'Processing...'}
+                        {chunkProgress
+                          ? `${STAGE_LABELS[currentStage]} (${chunkProgress.done}/${chunkProgress.total})`
+                          : STAGE_LABELS[currentStage] || 'Processing...'}
                       </>
                     ) : (
                       <>
@@ -417,26 +563,37 @@ export default function AxTranslatorPage() {
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">Translation</CardTitle>
                     {result && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleCopy}
-                        className="gap-1.5 h-7 text-xs"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="size-3" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="size-3" />
-                            Copy
-                          </>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCopy}
+                          className="gap-1.5 h-7 text-xs"
+                        >
+                          {copied ? (
+                            <><Check className="size-3" /> Copied</>
+                          ) : (
+                            <><Copy className="size-3" /> Copy</>
+                          )}
+                        </Button>
+                        {outputChars > 50_000 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleDownload}
+                            className="gap-1.5 h-7 text-xs"
+                          >
+                            <Download className="size-3" /> Save
+                          </Button>
                         )}
-                      </Button>
+                      </div>
                     )}
                   </div>
+                  {result && (
+                    <div className="text-xs text-muted-foreground">
+                      {outputChars.toLocaleString()} chars | ~{outputTokens.toLocaleString()} tokens
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent className="flex-1">
                   {isTranslating ? (
@@ -446,32 +603,42 @@ export default function AxTranslatorPage() {
                         <Sparkles className="size-4 absolute top-0 right-0 text-amber-500 animate-pulse" />
                       </div>
                       <div className="text-center space-y-1">
-                        <p className="text-sm font-medium">{STAGE_LABELS[currentStage] || 'Processing...'}</p>
+                        <p className="text-sm font-medium">
+                          {chunkProgress
+                            ? `${STAGE_LABELS[currentStage]} — Chunk ${chunkProgress.done + 1} of ${chunkProgress.total}`
+                            : STAGE_LABELS[currentStage] || 'Processing...'}
+                        </p>
                         <p className="text-xs text-muted-foreground">
+                          {currentStage === 'chunking' && 'Splitting text into manageable chunks...'}
                           {currentStage === 'translate' && 'Sending to NVIDIA GPT-OSS 120B...'}
                           {currentStage === 'validate' && 'Checking translation quality...'}
                           {currentStage === 'refine' && 'Improving translation based on feedback...'}
                         </p>
                       </div>
                       <div className="w-full max-w-xs space-y-1">
-                        <Progress
-                          value={
-                            currentStage === 'translate' ? 33 :
-                            currentStage === 'validate' ? 66 : 90
-                          }
-                          className="h-1.5"
-                        />
-                        <div className="flex justify-between text-[10px] text-muted-foreground">
-                          <span className={currentStage === 'translate' ? 'text-primary font-medium' : ''}>Translate</span>
-                          <span className={currentStage === 'validate' ? 'text-primary font-medium' : ''}>Validate</span>
-                          <span className={currentStage === 'refine' ? 'text-primary font-medium' : ''}>Refine</span>
-                        </div>
+                        {chunkProgress ? (
+                          <Progress
+                            value={(chunkProgress.done / chunkProgress.total) * 100}
+                            className="h-1.5"
+                          />
+                        ) : (
+                          <Progress
+                            value={
+                              currentStage === 'translate' ? 33 :
+                              currentStage === 'validate' ? 66 : 90
+                            }
+                            className="h-1.5"
+                          />
+                        )}
                       </div>
                     </div>
                   ) : result ? (
                     <div className="min-h-[200px] space-y-3">
-                      <div className="rounded-lg bg-muted/50 p-4">
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                      <div
+                        ref={outputRef}
+                        className="rounded-lg bg-muted/50 p-4 max-h-[400px] overflow-y-auto"
+                      >
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                           {result.translatedText}
                         </p>
                       </div>
@@ -495,6 +662,11 @@ export default function AxTranslatorPage() {
                           <Zap className="size-3" />
                           {result.attempts} attempt{result.attempts > 1 ? 's' : ''}
                         </Badge>
+                        {result.pipeline?.[0]?.startsWith('chunked') && (
+                          <Badge variant="outline" className="gap-1 text-xs">
+                            Chunked ({result.pipeline[0].replace('chunked-', '')} parts)
+                          </Badge>
+                        )}
                       </div>
                       {/* Issues */}
                       {result.issues && result.issues.length > 0 && (
@@ -507,6 +679,18 @@ export default function AxTranslatorPage() {
                             </p>
                           ))}
                         </div>
+                      )}
+                      {/* Download button for large outputs */}
+                      {outputChars > 10_000 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDownload}
+                          className="gap-1.5 w-full"
+                        >
+                          <Download className="size-3" />
+                          Download as .txt
+                        </Button>
                       )}
                     </div>
                   ) : error ? (
@@ -530,7 +714,7 @@ export default function AxTranslatorPage() {
                         Translation will appear here
                       </p>
                       <p className="text-xs text-muted-foreground/60 text-center max-w-[250px]">
-                        Enter text, set your NVIDIA API key, and click Translate to start the DSPy-like pipeline
+                        Supports up to 30K+ tokens. Large texts are auto-chunked and translated in parts.
                       </p>
                     </div>
                   )}
@@ -554,7 +738,7 @@ export default function AxTranslatorPage() {
                       <p className="text-sm font-medium">Translate</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      NVIDIA GPT-OSS 120B translates your text with a carefully compiled prompt that preserves meaning and tone.
+                      NVIDIA GPT-OSS 120B translates your text with a carefully compiled prompt. Large texts are auto-chunked at ~6K token boundaries.
                     </p>
                   </div>
                   <div className="space-y-2 p-4 rounded-lg bg-muted/50">
@@ -563,7 +747,7 @@ export default function AxTranslatorPage() {
                       <p className="text-sm font-medium">Validate</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      A separate LLM call evaluates accuracy, fluency, and completeness. Quality score and issues are reported.
+                      A separate LLM call evaluates accuracy, fluency, and completeness. Quality score and issues are reported per chunk.
                     </p>
                   </div>
                   <div className="space-y-2 p-4 rounded-lg bg-muted/50">
@@ -654,4 +838,51 @@ export default function AxTranslatorPage() {
       </footer>
     </div>
   );
+}
+
+// ─── Chunking Utility ────────────────────────────────────────────────────────
+// Splits text into chunks at paragraph/sentence boundaries, each under maxTokens.
+
+function splitIntoChunks(text: string, maxTokens: number): string[] {
+  const paragraphs = text.split(/\n\n+/);
+  const chunks: string[] = [];
+  let currentChunk = '';
+
+  for (const para of paragraphs) {
+    const paraTokens = estimateTokens(para);
+    const currentTokens = estimateTokens(currentChunk);
+
+    // If a single paragraph exceeds max, split by sentences
+    if (paraTokens > maxTokens) {
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+        currentChunk = '';
+      }
+      const sentences = para.split(/(?<=[.!?])\s+/);
+      for (const sentence of sentences) {
+        const sentTokens = estimateTokens(sentence);
+        const currTokens = estimateTokens(currentChunk);
+        if (currTokens + sentTokens > maxTokens && currentChunk.trim()) {
+          chunks.push(currentChunk.trim());
+          currentChunk = sentence + ' ';
+        } else {
+          currentChunk += sentence + ' ';
+        }
+      }
+      continue;
+    }
+
+    if (currentTokens + paraTokens > maxTokens && currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+      currentChunk = para + '\n\n';
+    } else {
+      currentChunk += para + '\n\n';
+    }
+  }
+
+  if (currentChunk.trim()) {
+    chunks.push(currentChunk.trim());
+  }
+
+  return chunks.length > 0 ? chunks : [text];
 }

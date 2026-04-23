@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+// Vercel serverless function timeout — translation pipeline can take up to 60s
+export const maxDuration = 60;
+
 import { runTranslationPipeline } from '@/lib/translation-pipeline';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +18,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Run the DSPy-like translation pipeline directly
-    // (No separate mini-service needed — pipeline runs inside Next.js)
     const result = await runTranslationPipeline({
       text,
       sourceLanguage: sourceLanguage || 'auto',

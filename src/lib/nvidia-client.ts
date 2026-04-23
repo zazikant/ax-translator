@@ -21,6 +21,7 @@ export interface NvidiaChatOptions {
   messages: NvidiaChatMessage[];
   temperature?: number;
   maxTokens?: number;
+  apiKey: string; // Required — always pass explicitly
 }
 
 export interface NvidiaChatResponse {
@@ -36,6 +37,7 @@ export interface NvidiaChatResponse {
 /**
  * Call NVIDIA's chat completions API.
  * Compatible with OpenAI SDK format.
+ * API key is always passed via options.apiKey.
  */
 export async function nvidiaChatCompletion(options: NvidiaChatOptions): Promise<NvidiaChatResponse> {
   const model = options.model || DEFAULT_MODEL;
@@ -47,7 +49,7 @@ export async function nvidiaChatCompletion(options: NvidiaChatOptions): Promise<
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${options.messages.length ? '' : ''}`, // apiKey passed separately
+        'Authorization': `Bearer ${options.apiKey}`,
       },
       body: JSON.stringify({
         model,
@@ -88,7 +90,7 @@ export async function nvidiaChatCompletion(options: NvidiaChatOptions): Promise<
 
 /**
  * Convenience: Call with system prompt + user content + API key.
- * This is the primary way activities call the LLM.
+ * This is the primary way the pipeline calls the LLM.
  */
 export async function callNvidiaLLM(
   systemPrompt: string,

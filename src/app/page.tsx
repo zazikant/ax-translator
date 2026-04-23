@@ -252,7 +252,7 @@ export default function AxTranslatorPage() {
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="gap-1 text-xs">
               <Zap className="size-3" />
-              NVIDIA GPT-OSS
+              GPT-OSS 120B
             </Badge>
           </div>
         </div>

@@ -99,7 +99,7 @@ export async function translateWorkflow(input: TranslateWorkflowInput): Promise<
   let translatedText = '';
   let qualityScore = 0;
   let issues: string[] = [];
-  let model = input.model || 'nvidia/llama-3.1-nemotron-70b-instruct';
+  let model = input.model || 'openai/gpt-oss-120b';
 
   // ─── Stage 1: Translate ─────────────────────────────────────────────────
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const TEMPORAL_SERVICE_URL = 'http://localhost:3030';
+import { runTranslationPipeline } from '@/lib/translation-pipeline';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,38 +13,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call the Temporal service (direct mode) synchronously
-    const response = await fetch(`${TEMPORAL_SERVICE_URL}/api/translate/sync?XTransformPort=3030`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text,
-        sourceLanguage: sourceLanguage || 'auto',
-        targetLanguage,
-        apiKey,
-        model: model || undefined,
-      }),
+    // Run the DSPy-like translation pipeline directly
+    // (No separate mini-service needed — pipeline runs inside Next.js)
+    const result = await runTranslationPipeline({
+      text,
+      sourceLanguage: sourceLanguage || 'auto',
+      targetLanguage,
+      apiKey,
+      model: model || undefined,
     });
 
-    if (!response.ok) {
-      const errorData = await response.text();
-      let errorMessage = 'Translation failed';
-      try {
-        const parsed = JSON.parse(errorData);
-        errorMessage = parsed.error || errorMessage;
-      } catch {}
-      return NextResponse.json(
-        { error: errorMessage },
-        { status: response.status }
-      );
-    }
-
-    const result = await response.json();
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error('[Translate API] Error:', error?.message);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    console.error('[Translate API] Error:', message);
     return NextResponse.json(
-      { error: error?.message || 'Internal server error' },
+      { error: message },
       { status: 500 }
     );
   }

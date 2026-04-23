@@ -244,6 +244,14 @@ export default function AxTranslatorPage() {
             return;
           }
 
+          if (!data.translatedText || data.translatedText.trim() === '') {
+            setError(`Translation returned empty result on chunk ${i + 1}/${chunks.length}. Please try again.`);
+            setIsTranslating(false);
+            setCurrentStage('');
+            setChunkProgress(null);
+            return;
+          }
+
           translatedChunks.push(data.translatedText);
           totalQuality += data.qualityScore;
           totalAttempts += data.attempts;
@@ -288,6 +296,16 @@ export default function AxTranslatorPage() {
 
         if (!response.ok) {
           setError(data.error || 'Translation failed');
+          setIsTranslating(false);
+          setCurrentStage('');
+          return;
+        }
+
+        // Safety check: if translated text is empty or same as input, show warning
+        if (!data.translatedText || data.translatedText.trim() === '') {
+          setError('Translation returned empty result. Please try again.');
+          setIsTranslating(false);
+          setCurrentStage('');
           return;
         }
 

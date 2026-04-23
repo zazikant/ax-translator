@@ -15,6 +15,9 @@
  * 2. Validate translation quality
  * 3. If validation fails, refine translation (up to 2 refinements)
  * 4. Return final translated text with metadata
+ *
+ * Fast mode (for Vercel Hobby / timeout constraints):
+ * - Single translate call only, no validate/refine
  */
 
 import { callNvidiaLLM, DEFAULT_MODEL } from './nvidia-client';
@@ -44,6 +47,15 @@ interface ErrorEntry {
   stage: 'translate' | 'validate' | 'refine';
   error: string;
   issues?: string[];
+}
+
+// ─── Echo Detection ─────────────────────────────────────────────────────────
+// If the LLM returns the same text it was given (instead of translating),
+// we detect it and retry with a more forceful prompt.
+
+function isEcho(originalText: string, translatedText: string): boolean {
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  return normalize(originalText) === normalize(translatedText);
 }
 
 // ─── compileTranslatePrompt — pure function (DSPy-like) ──────────────────────
@@ -80,27 +92,26 @@ Source: ${input.text.substring(0, 200)}... → ${input.targetLanguage}`;
 
 async function translateText(input: TranslationRequest, isRetry: boolean = false): Promise<{ translatedText: string; model: string }> {
   const srcLabel = input.sourceLanguage === 'auto' ? 'the detected source language' : input.sourceLanguage;
+  const targetLabel = input.targetLanguage;
 
   let systemPrompt: string;
   let userContent: string;
 
   if (isRetry) {
     // More forceful prompt for retries — explicitly say NOT to echo
-    systemPrompt = `You are a professional translator. Your task is to TRANSLATE the given text from ${srcLabel} into ${input.targetLanguage}.
+    systemPrompt = `You are a professional translator. Your task is to TRANSLATE the given text from ${srcLabel} into ${targetLabel}.
 
-IMPORTANT: You MUST output the text IN ${input.targetLanguage.toUpperCase()}. Do NOT output the same text in the original language. This is a translation task, not a repetition task.
+CRITICAL INSTRUCTION: You MUST output the text IN ${targetLabel.toUpperCase()}. Do NOT output the same text in the original language. This is a translation task, not a repetition task. The previous attempt returned the original text unchanged — you must actually translate it this time.
 
 Rules:
-- Produce a clean, natural, and understandable translation in ${input.targetLanguage}
+- Produce a clean, natural, and understandable translation in ${targetLabel}
 - Preserve the original meaning exactly — do not add, remove, or change information
-- Use natural phrasing that a native speaker of ${input.targetLanguage} would use
-- Output ONLY the translated text in ${input.targetLanguage}, nothing else.`;
+- Use natural phrasing that a native speaker of ${targetLabel} would use
+- Output ONLY the translated text in ${targetLabel}, nothing else.`;
 
-    userContent = `Translate the following text from ${srcLabel} to ${input.targetLanguage}:
-
-${input.text}`;
+    userContent = `Translate the following text from ${srcLabel} to ${targetLabel}. The output must be in ${targetLabel}:\n\n${input.text}`;
   } else {
-    systemPrompt = `You are a professional translator. Translate the given text from ${srcLabel} to ${input.targetLanguage}.
+    systemPrompt = `You are a professional translator. Translate the given text from ${srcLabel} to ${targetLabel}.
 
 Rules:
 - Produce a clean, natural, and understandable translation
@@ -109,11 +120,13 @@ Rules:
 - Maintain the same tone and register (formal, informal, technical, etc.)
 - If the text contains idioms, translate them to equivalent expressions in the target language
 - If the text contains technical terms, use the standard terminology in the target language
-- Output ONLY the translated text in ${input.targetLanguage}, nothing else
+- Output ONLY the translated text in ${targetLabel}, nothing else
 - Do NOT output the original text — you must output the translation`;
 
-    userContent = `Translate the following text from ${srcLabel} to ${input.targetLanguage}:\n\n${input.text}`;
+    userContent = `Translate the following text from ${srcLabel} to ${targetLabel}. The output must be in ${targetLabel}:\n\n${input.text}`;
   }
+
+  console.log(`[Pipeline] translateText (retry=${isRetry}): src=${srcLabel}, target=${targetLabel}, input length=${input.text.length}`);
 
   const result = await callNvidiaLLM(systemPrompt, userContent, input.apiKey, input.model, 2048, 0.3);
 
@@ -123,6 +136,8 @@ Rules:
     .replace(/\n?```$/m, '')
     .replace(/^["']|["']$/g, '')
     .trim();
+
+  console.log(`[Pipeline] translateText result: length=${cleaned.length}, preview="${cleaned.substring(0, 100)}", isEcho=${isEcho(input.text, cleaned)}`);
 
   return {
     translatedText: cleaned,
@@ -220,11 +235,60 @@ ${issuesList}`;
     .trim();
 }
 
+// ─── Fast Translation (single call, no validate/refine) ──────────────────────
+// For Vercel Hobby plan or when speed is preferred over quality validation.
+
+export async function runFastTranslation(input: TranslationRequest): Promise<TranslationResult> {
+  console.log('[Pipeline] Fast mode: translate only (no validate/refine)');
+
+  let translatedText = '';
+  let model = input.model || DEFAULT_MODEL;
+  const pipeline: string[] = ['fast-translate'];
+
+  try {
+    const result = await translateText(input);
+    translatedText = result.translatedText;
+    model = result.model;
+
+    // Echo detection — retry once if model echoed input
+    if (isEcho(input.text, translatedText) && input.sourceLanguage !== input.targetLanguage) {
+      console.log('[Pipeline] Echo detected in fast mode — retrying...');
+      pipeline.push('echo-detected', 'fast-retry');
+      const retryResult = await translateText(input, true);
+      translatedText = retryResult.translatedText;
+    }
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[Pipeline] Fast translation failed:', errorMsg);
+    return {
+      translatedText: '',
+      qualityScore: 0,
+      attempts: 1,
+      refinements: 0,
+      issues: [errorMsg],
+      model,
+      pipeline,
+    };
+  }
+
+  return {
+    translatedText,
+    qualityScore: 85, // Estimated — no validation step
+    attempts: 1,
+    refinements: 0,
+    issues: undefined,
+    model,
+    pipeline,
+  };
+}
+
 // ─── Main Pipeline (was translateWorkflow) ───────────────────────────────────
 // This is the Temporal workflow logic, running directly.
 // State machine: translate → validate → refine → done
 
 export async function runTranslationPipeline(input: TranslationRequest): Promise<TranslationResult> {
+  console.log(`[Pipeline] Full pipeline: src=${input.sourceLanguage}, target=${input.targetLanguage}, text length=${input.text.length}`);
+
   let attempt = 0;
   let refinements = 0;
   const maxRefinements = 2;
@@ -249,7 +313,7 @@ export async function runTranslationPipeline(input: TranslationRequest): Promise
       model = result.model;
 
       // ── Echo Detection: If model returned the same text, retry with forceful prompt ──
-      if (translatedText.trim().toLowerCase() === input.text.trim().toLowerCase() && input.sourceLanguage !== input.targetLanguage) {
+      if (isEcho(input.text, translatedText) && input.sourceLanguage !== input.targetLanguage) {
         console.log('[Pipeline] Echo detected — model returned input text. Retrying with explicit prompt...');
         pipeline.push('echo-detected');
         attempt++;
@@ -258,9 +322,9 @@ export async function runTranslationPipeline(input: TranslationRequest): Promise
         const retryResult = await translateText(input, true);
         translatedText = retryResult.translatedText;
 
-        // If still echoing after retry, note it but continue
-        if (translatedText.trim().toLowerCase() === input.text.trim().toLowerCase()) {
-          console.log('[Pipeline] Echo persists after retry — continuing with original output');
+        // If still echoing after retry, note it but continue to validation
+        if (isEcho(input.text, translatedText)) {
+          console.log('[Pipeline] Echo persists after retry — validation will catch this');
           pipeline.push('echo-persist');
         }
       }
@@ -285,7 +349,7 @@ export async function runTranslationPipeline(input: TranslationRequest): Promise
           model = result.model;
 
           // Echo detection on retry too
-          if (translatedText.trim().toLowerCase() === input.text.trim().toLowerCase() && input.sourceLanguage !== input.targetLanguage) {
+          if (isEcho(input.text, translatedText) && input.sourceLanguage !== input.targetLanguage) {
             console.log('[Pipeline] Echo detected on retry — continuing');
             pipeline.push('echo-on-retry');
           }
@@ -328,7 +392,14 @@ export async function runTranslationPipeline(input: TranslationRequest): Promise
       qualityScore = validation.qualityScore;
       issues = validation.issues;
 
-      if (validation.isValid) {
+      // Check if validation caught an echo (translated text same as source)
+      if (isEcho(input.text, translatedText) && input.sourceLanguage !== input.targetLanguage) {
+        // Force refinement to fix the echo
+        pipeline.push('echo-caught-by-validation');
+        qualityScore = Math.min(qualityScore, 30);
+        issues = [...issues, 'Translation appears identical to source text — not actually translated'];
+        resumeFrom = 'refine';
+      } else if (validation.isValid) {
         pipeline.push('validate-pass');
         resumeFrom = 'done';
       } else {
@@ -364,7 +435,7 @@ export async function runTranslationPipeline(input: TranslationRequest): Promise
         qualityScore = revalidation.qualityScore;
         issues = revalidation.issues;
 
-        if (revalidation.isValid) {
+        if (revalidation.isValid && !isEcho(input.text, translatedText)) {
           pipeline.push(`revalidate-pass-${refinements}`);
           resumeFrom = 'done';
           break;

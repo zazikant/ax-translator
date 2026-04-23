@@ -1,0 +1,15 @@
+{
+  "name": "temporal-ax-translator",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  },
+  "dependencies": {
+    "@temporalio/client": "^1.16.1",
+    "@temporalio/worker": "^1.16.1",
+    "@temporalio/workflow": "^1.16.1",
+    "@temporalio/activity": "^1.16.1",
+    "@temporalio/common": "^1.16.1"
+  }
+}

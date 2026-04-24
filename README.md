@@ -14,6 +14,18 @@ Answer:
 
 A hungry man eats an apple.
 
+
+## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens.
+
+
+Write a telegraphic speech based on the idea:
+
+couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles
+
+Answer:
+
+Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.
+
 # Ax Translator — DSPy-like Translation Pipeline
 
 Translate text into clean, understandable language using a DSPy-inspired pipeline powered by NVIDIA GPT-OSS 120B.

@@ -40,6 +40,11 @@ The economy is struggling due to inflation
 
 economy, inflation, struggling
 
+
+## Rewrite each circular dependency as: Problem → External Cause → External Solution. Do not preserve any loopsentence from Telegraphic speech idea::
+
+use only when complex circular dependicies are involved
+
 ## Write a telegraphic speech about:: 
 
 Climate change

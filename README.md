@@ -43,7 +43,11 @@ economy, inflation, struggling
 
 ## Rewrite each circular dependency as: Problem → External Cause → External Solution. Do not preserve any loopsentence from Telegraphic speech idea::
 
-use only when complex circular dependicies are involved
+use only when complex circular dependicies are involved.
+
+always pass this output to 
+
+"Use tag-based prompts" step
 
 ## Write a telegraphic speech about:: 
 

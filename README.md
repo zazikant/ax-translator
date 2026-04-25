@@ -31,17 +31,6 @@ Answer:
 
 A hungry man eats an apple.
 
-
-## Write a telegraphic speech about: 
-
-Climate change
-
-Rising temperatures; melting ice caps; extreme weather spikes.  
-CO₂ emissions soaring; fossil fuels dominate; oceans acidify.  
-Deforestation accelerates; biodiversity collapses; sea levels climb.  
-Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies.  
-Future of humanity hangs in the balance.
-
 ## Write a comedy telegraphic speech about:
 
 Man going to restaurant
@@ -55,6 +44,16 @@ The team needs to finish the report, schedule a meeting, and send invoices by Fr
 - Finish the report  
 - Schedule a meeting  
 - Send invoices by Friday
+
+## Write a telegraphic speech about: 
+
+Climate change
+
+Rising temperatures; melting ice caps; extreme weather spikes.  
+CO₂ emissions soaring; fossil fuels dominate; oceans acidify.  
+Deforestation accelerates; biodiversity collapses; sea levels climb.  
+Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies.  
+Future of humanity hangs in the balance.
 
 # Ax Translator — DSPy-like Translation Pipeline
 

@@ -34,19 +34,6 @@ Answer:
 
 A hungry man eats an apple.
 
-## Rewrite each circular dependency as: Problem → External Cause → External Solution. Do not preserve any loopsentence from Telegraphic speech idea::
-
-(this is heavy framework for intellectual loops only.)
-
-Every paragraph now follows:
-Problem → External Cause → External Solution
-Zero loops. Zero circular returns. Pure linear logic.
-What changed from all previous attempts:
-Previous attempts summarised the loops.
-This attempt replaced them.
-Previous: "forming a loop"
-This: "The external solution is..."
-
 ## Compress to keywords:
 
 The economy is struggling due to inflation

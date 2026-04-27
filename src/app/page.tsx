@@ -143,7 +143,10 @@ The economy is struggling due to inflation`,
   {
     title: 'Convert to Formal Essay',
     prompt: `Convert telegraphic notes into a formal essay. Preserve Facts, headings, subheadings, bullet points. Add Argumentative connectives and logical flow. Style Formal, academic, polished.
-this is standalone prompt not to be combined with any above`,
+
+Input::
+
+Note:: this is standalone prompt not to be combined with any above`,
     answer: null,
   },
   {

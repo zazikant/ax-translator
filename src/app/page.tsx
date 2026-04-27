@@ -109,20 +109,20 @@ interface HistoryEntry {
 const EXAMPLES = [
   {
     title: 'Telegraphic Speech (Basic)',
-    prompt: `Write a telegraphic speech based on the idea:
+    prompt: `Write a telegraphic speech based on the idea::
 scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward`,
     answer: `Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.`,
   },
   {
     title: 'Tag-Based Prompts',
-    prompt: `Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens:
-Write a telegraphic speech based on the idea:
+    prompt: `Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens::
+Write a telegraphic speech based on the idea::
 couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles`,
     answer: `Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.`,
   },
   {
     title: 'Extract Action Items',
-    prompt: `Extract only action items:
+    prompt: `Extract only action items::
 The team needs to finish the report, schedule a meeting, and send invoices by Friday`,
     answer: `- Finish the report
 - Schedule a meeting
@@ -130,13 +130,13 @@ The team needs to finish the report, schedule a meeting, and send invoices by Fr
   },
   {
     title: 'Sentence from Telegraphic Speech',
-    prompt: `Write sentence from Telegraphic speech idea:
+    prompt: `Write sentence from Telegraphic speech idea::
 A man apple hungry eats`,
     answer: `A hungry man eats an apple.`,
   },
   {
     title: 'Compress to Keywords',
-    prompt: `Compress to keywords:
+    prompt: `Compress to keywords::
 The economy is struggling due to inflation`,
     answer: `economy, inflation, struggling`,
   },
@@ -148,7 +148,7 @@ this is standalone prompt not to be combined with any above`,
   },
   {
     title: 'Climate Change Telegraphic Speech',
-    prompt: `Write a telegraphic speech about:
+    prompt: `Write a telegraphic speech about::
 Climate change
 Rising temperatures; melting ice caps; extreme weather spikes.
 CO₂ emissions soaring; fossil fuels dominate; oceans acidify.
@@ -159,7 +159,7 @@ Future of humanity hangs in the balance.`,
   },
   {
     title: 'Comedy Telegraphic Speech',
-    prompt: `Write a comedy telegraphic speech about:
+    prompt: `Write a comedy telegraphic speech about::
 Man going to restaurant
 Man: starving. Enters restaurant. Waiter: menu. Man: eyes menu, brain: "food?" Orders steak, medium‑rare. Waiter: "how you want it?" Man: "like my ex—well done." Plate arrives. Man: "is this a joke?" Fork: "no, it's me." Soup: "I'm too hot for this." Bill arrives. Man: "pay with jokes?" Cashier: "only laughs accepted." Man leaves, satisfied, stomach full, ego slightly bruised.`,
     answer: null,

@@ -28,6 +28,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
   Languages,
   Key,
   ArrowRightLeft,
@@ -44,6 +49,7 @@ import {
   History,
   Info,
   Download,
+  ChevronDown,
 } from 'lucide-react';
 
 // ─── Language Options ────────────────────────────────────────────────────────
@@ -98,7 +104,69 @@ interface HistoryEntry {
   timestamp: number;
 }
 
-// ─── Pipeline Stage Labels ───────────────────────────────────────────────────
+// ─── Examples ─────────────────────────────────────────────────────────────────
+
+const EXAMPLES = [
+  {
+    title: 'Telegraphic Speech (Basic)',
+    prompt: `Write a telegraphic speech based on the idea:
+scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward`,
+    answer: `Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.`,
+  },
+  {
+    title: 'Tag-Based Prompts',
+    prompt: `Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens:
+Write a telegraphic speech based on the idea:
+couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles`,
+    answer: `Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.`,
+  },
+  {
+    title: 'Extract Action Items',
+    prompt: `Extract only action items:
+The team needs to finish the report, schedule a meeting, and send invoices by Friday`,
+    answer: `- Finish the report
+- Schedule a meeting
+- Send invoices by Friday`,
+  },
+  {
+    title: 'Sentence from Telegraphic Speech',
+    prompt: `Write sentence from Telegraphic speech idea:
+A man apple hungry eats`,
+    answer: `A hungry man eats an apple.`,
+  },
+  {
+    title: 'Compress to Keywords',
+    prompt: `Compress to keywords:
+The economy is struggling due to inflation`,
+    answer: `economy, inflation, struggling`,
+  },
+  {
+    title: 'Convert to Formal Essay',
+    prompt: `Convert telegraphic notes into a formal essay. Preserve Facts, headings, subheadings, bullet points. Add Argumentative connectives and logical flow. Style Formal, academic, polished.
+this is standalone prompt not to be combined with any above`,
+    answer: null,
+  },
+  {
+    title: 'Climate Change Telegraphic Speech',
+    prompt: `Write a telegraphic speech about:
+Climate change
+Rising temperatures; melting ice caps; extreme weather spikes.
+CO₂ emissions soaring; fossil fuels dominate; oceans acidify.
+Deforestation accelerates; biodiversity collapses; sea levels climb.
+Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies.
+Future of humanity hangs in the balance.`,
+    answer: null,
+  },
+  {
+    title: 'Comedy Telegraphic Speech',
+    prompt: `Write a comedy telegraphic speech about:
+Man going to restaurant
+Man: starving. Enters restaurant. Waiter: menu. Man: eyes menu, brain: "food?" Orders steak, medium‑rare. Waiter: "how you want it?" Man: "like my ex—well done." Plate arrives. Man: "is this a joke?" Fork: "no, it's me." Soup: "I'm too hot for this." Bill arrives. Man: "pay with jokes?" Cashier: "only laughs accepted." Man leaves, satisfied, stomach full, ego slightly bruised.`,
+    answer: null,
+  },
+];
+
+// ─── Pipeline Stage Labels ────────────────────────────────────────────────────
 
 const STAGE_LABELS: Record<string, string> = {
   translate: 'Translating',
@@ -774,6 +842,61 @@ export default function AxTranslatorPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Examples */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="size-4 text-muted-foreground" />
+                  Prompt Examples
+                </CardTitle>
+                <CardDescription>
+                  Click each example to expand and copy the prompt
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {EXAMPLES.map((example, index) => (
+                  <Collapsible key={index} className="border rounded-lg">
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-between text-sm font-normal px-3 h-auto py-2"
+                      >
+                        <span className="truncate mr-2">{example.title}</span>
+                        <ChevronDown className="size-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="px-3 pb-3 space-y-2">
+                        <div className="bg-muted/50 rounded-md p-3 text-xs font-mono whitespace-pre-wrap">
+                          {example.prompt}
+                        </div>
+                        {example.answer && (
+                          <>
+                            <p className="text-xs text-muted-foreground font-medium">Answer:</p>
+                            <div className="bg-muted/50 rounded-md p-3 text-xs whitespace-pre-wrap">
+                              {example.answer}
+                            </div>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 w-full"
+                          onClick={() => {
+                            setInputText(example.prompt);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                        >
+                          <Copy className="size-3" />
+                          Use this prompt
+                        </Button>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                ))}
+              </CardContent>
+            </Card>
 
             {/* Pipeline Explanation */}
             <Card>

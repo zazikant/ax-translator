@@ -40,6 +40,10 @@ The economy is struggling due to inflation
 
 economy, inflation, struggling
 
+## Convert telegraphic notes into a formal essay.  Preserve Facts, headings, subheadings, bullet points.  Add Argumentative connectives and logical flow. Style Formal, academic, polished.Input::
+
+this is standalone prompt not to be combined with any above 
+
 ## Write a telegraphic speech about:: 
 
 Climate change

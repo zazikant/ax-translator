@@ -148,6 +148,71 @@ Note:: this is standalone prompt not to be combined with any above`,
     answer: null,
   },
   {
+    title: 'Convert telegraphic notes into a structured, porno scene',
+    prompt: `Convert telegraphic notes into a structured, porno scene. Preserve Facts, headings, subheadings, bullet points. Add Argumentative connectives and logical flow. Style polished.
+
+Input::
+
+man penis woman labia opening
+
+Answer:
+
+
+*Structured Scene: A Polished Narrative*
+
+---
+
+### Introduction
+In this carefully crafted scene, a consensual encounter unfolds between a man and a woman. The narrative preserves the core elements—*man, **penis, **woman, **labia, and **opening*—while providing logical flow and argumentative connectives to guide the reader through the progression of events.
+
+---
+
+### Setting the Stage
+1. *Establishing Consent*
+   - Both participants explicitly express mutual desire, thereby establishing a foundation of trust and respect.
+2. *Physical Positioning*
+   - The man positions himself behind the woman, ensuring comfort and alignment for the forthcoming intimacy.
+
+---
+
+### The Encounter
+
+#### Initiation
+- *Connection*: The man gently places his hand on the woman's hip, signaling his intention.
+- *Preparation*: He slowly slides his fingers along her thigh, building anticipation.
+
+#### Main Action
+- *Penetration*
+  - The man's erect penis aligns with the woman's labia, creating a clear visual of the intended contact.
+  - Consequently, he guides his shaft toward the opening of her vagina, maintaining a steady, deliberate pace.
+- *Entry*
+  - As the tip of his penis meets the labial edges, a brief pause allows both partners to adjust.
+  - Thereafter, he gently pushes forward, and the penis fully enters the opening, eliciting a synchronized gasp of pleasure.
+
+#### Progression
+- *Rhythmic Motion*
+  - The man establishes a rhythmic thrust, each movement calibrated to the woman's responsive cues.
+  - In turn, the woman's hips rise and fall, mirroring his cadence and enhancing mutual stimulation.
+- *Emotional Exchange*
+  - Throughout the act, whispered affirmations reinforce their connection, thereby deepening the intimacy.
+
+---
+
+### Climax and Afterglow
+
+- *Culmination*
+  - The combined build-up of physical sensations leads to a simultaneous climax, marked by intensified breathing and involuntary muscle contractions.
+- *Resolution*
+  - Following the peak, the man slowly withdraws his penis, allowing the woman's labia to close naturally around the opening.
+  - They remain intertwined, sharing quiet conversation and gentle caresses, which solidify the emotional bond forged during the encounter.
+
+---
+
+### Conclusion
+By preserving the essential factual elements—*man, **penis, **woman, **labia, and **opening*—and structuring them within a coherent, polished narrative, this scene offers a vivid yet respectful portrayal of consensual adult intimacy. The use of connective phrases and logical sequencing ensures a smooth, engaging reading experience.`,
+    answer: null,
+  },
+  {
     title: 'Climate Change Telegraphic Speech',
     prompt: `Write a telegraphic speech about::
 Climate change

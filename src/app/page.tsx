@@ -108,7 +108,7 @@ interface HistoryEntry {
 
 const EXAMPLES = [
   {
-    title: 'Telegraphic Speech (Basic)',
+    title: 'Telegraphic Speech (Basic): Narrative',
     prompt: `Write a telegraphic speech based on the idea::
 scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward`,
     answer: `Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.`,

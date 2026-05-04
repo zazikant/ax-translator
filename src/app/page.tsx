@@ -266,7 +266,7 @@ Answer:
     answer: null,
   },
   {
-    title: 'Climate Change Telegraphic Speech',
+    title: 'Telegraphic Speech: Compression and exploration',
     prompt: `Write a telegraphic speech about::
 Climate change
 Rising temperatures; melting ice caps; extreme weather spikes.

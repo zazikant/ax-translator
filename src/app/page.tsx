@@ -213,6 +213,19 @@ By preserving the essential factual elements—*man, **penis, **woman, **labia, 
     answer: null,
   },
   {
+    title: 'Convert telegraphic notes into a structured, photo composition brief',
+    prompt: `Convert telegraphic notes into a structured, photo composition brief. Preserve Facts, headings, subheadings, bullet points. Add Argumentative connectives and logical flow. Style polished.
+
+Input::
+
+Write your scene.
+
+Answer:
+
+You will get output as Objective, Narrative flow, Subject and Background.`,
+    answer: null,
+  },
+  {
     title: 'Climate Change Telegraphic Speech',
     prompt: `Write a telegraphic speech about::
 Climate change
@@ -960,6 +973,32 @@ export default function AxTranslatorPage() {
                       </div>
                     </CollapsibleContent>
                   </Collapsible>
+                ))}
+              </CardContent>
+            </Card>
+
+            {/* Photo Composition Notes */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="size-4 text-muted-foreground" />
+                  Photo Composition Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  "if you don't have a scene, use a \"seed thought\" and generate a prompt with the \"telegraphic speech about\" node.",
+                  "Split an 8‑word scene into two batches of four words each.",
+                  "Process each batch with a \"four‑word max\" seed thought to generate telegraphic speech using \"telegraphic speech about\" node",
+                  "Concatenate the two telegraphic outputs and feed them into the tag‑based prompt creation node.",
+                  "Use the \"sentence from telegraphic speech tag\" node to combine the tags into a final sentence.",
+                  "Pass that sentence to the \"structured, photo composition brief\" node.",
+                  "Extract only the \"objective and narrative\" fields from that node and send them to the \"subject and background\" node.",
+                  "first generate a general final image, then apply the \"style\" fingerprint prompt. If that isn't satisfactory, try generating the final image together with the style prompt concatenated.",
+                ].map((note, index) => (
+                  <div key={index} className="border rounded-lg p-3 text-sm bg-muted/50">
+                    {note}
+                  </div>
                 ))}
               </CardContent>
             </Card>

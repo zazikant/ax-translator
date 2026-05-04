@@ -283,6 +283,82 @@ Man going to restaurant
 Man: starving. Enters restaurant. Waiter: menu. Man: eyes menu, brain: "food?" Orders steak, medium‑rare. Waiter: "how you want it?" Man: "like my ex—well done." Plate arrives. Man: "is this a joke?" Fork: "no, it's me." Soup: "I'm too hot for this." Bill arrives. Man: "pay with jokes?" Cashier: "only laughs accepted." Man leaves, satisfied, stomach full, ego slightly bruised.`,
     answer: null,
   },
+  {
+    title: 'Steal Art Style Fingerprint',
+    prompt: `Go to Gemini and paste this:
+
+Analyze this image and extract the complete art style fingerprint. Return only the following fields:
+Medium: What tool or technique created this?
+Color Palette: How many colors, what tones, warm or cool, saturated or muted?
+Brush Style: describe the brushwork character—are the strokes visible or smooth? Is it loose and painterly or tight and controlled? Organic or geometric? Soft, rounded forms or hard edges?
+Line Quality: Hard, soft, rough, clean, thick, invisible?
+Shadow Method: Flat, gradient, dramatic, overlay, none?
+Texture: Smooth, grainy, painted, digital, hand-drawn?
+Light Source: Specify only the lighting style—flat, diffused, directional, or ambient. Do not mention scene‑specific light sources such as the sun, moon, fire, or any objects in the image.
+Emotional Register: What does it feel like?
+Artist/Movement Reference: Closest known artist or style movement?
+Platform Benchmark: Behance, Dribbble, Instagram, concept art, editorial?
+Output as comma-separated style tokens only. No sentences. No explanation. Ready to append directly to an image generation prompt.
+
+
+Answer:
+
+
+=============== Style 1 =============
+Medium: Digital illustration, digital painting.
+
+Color palette: Limited pastel tones—warm soft greens, coral pinks, sun‑kissed yellows, with saturated accent colors.
+
+Brush style: Soft, rounded forms; organic yet controlled painterly strokes; visible blended strokes and chunky shapes.
+
+Line quality: Lineless, soft edges.
+
+Shadow method: Flat cel‑shaded soft gradients with minimal occlusion.
+
+Texture: Grainy, stippled paper texture overlay, digital noise, soft matte finish.
+
+Light source: Diffused ambient lighting.
+
+Emotional register: Cozy, whimsical, nostalgic, serene, cheerful.
+
+Artist/Movement reference: Lo‑fi aesthetic, contemporary flat‑design illustration inspired by Mary Blair.
+
+Platform benchmark: Behance, Dribbble, Instagram editorial illustration.
+============================
+
+
+=============== Style 2 =============
+
+Medium: Digital illustration, 2D vector-raster hybrid
+Color Palette: Limited, soft blues, coral pink, lavender, ochre, muted earth tones, harmonious, balanced
+Brush Style: Visible strokes, painterly, soft-edged, organic, hand-rendered feel, rounded forms
+Line Quality: Soft, rough-edged, thin, integrated, low-contrast
+Shadow Method: Flat, minimal, subtle cell shading
+Texture: Grainy, stippled, paper texture overlay, tactile, dry-media finish
+Light Source: Diffused, ambient
+Emotional Register: Whimsical, adventurous, serene, educational, friendly
+Artist/Movement Reference: Contemporary Children's Book Illustration, Mid-Century Modern influence
+Platform Benchmark: Behance, Dribbble, Editorial Illustration
+
+==========================
+
+
+=============== Style 3 =============
+
+Medium: Mixed media digital illustration, vector-collage hybrid
+Color Palette: Teal and orange complementary scheme, high contrast, moody cyan tones, vibrant yellow-orange focal point, muted grayscale midtones
+Brush Style: Controlled, clean geometric silhouettes, flat graphic shapes, sharp edges, minimalist forms
+Line Quality: Clean, precise, mostly invisible edges defined by color blocks
+Shadow Method: Flat, hard-edged graphic shadows, stylized reflections
+Texture: Heavy digital grain, canvas overlay, halftone patterns, data-glitch overlays, distressed paper, weathered screenprint
+Light Source: Backlit, high-contrast silhouette
+Emotional Register: Atmospheric, cinematic, nostalgic, tech-noir, industrial
+Artist/Movement Reference: Tom Whalen, Malika Favre, Bauhaus poster art, Constructivism
+Platform Benchmark: Behance, editorial illustration, cinematic concept art style tokens
+
+==============================`,
+    answer: null,
+  },
 ];
 
 // ─── Pipeline Stage Labels ────────────────────────────────────────────────────

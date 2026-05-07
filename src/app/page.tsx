@@ -449,12 +449,14 @@ function estimateTokens(text: string): number {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AxTranslatorPage() {
+  const DEFAULT_API_KEY = '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';
+
   // API Key state — persist in sessionStorage so it survives page refreshes
   const [apiKey, setApiKey] = useState(() => {
     if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('nvidia_api_key') || '';
+      return sessionStorage.getItem('nvidia_api_key') || DEFAULT_API_KEY;
     }
-    return '';
+    return DEFAULT_API_KEY;
   });
   const [showApiKey, setShowApiKey] = useState(false);
 

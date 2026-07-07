@@ -465,6 +465,24 @@ export default function AxTranslatorPage() {
   const [currentStage, setCurrentStage] = useState<string>('');
   const [chunkProgress, setChunkProgress] = useState<{ done: number; total: number } | null>(null);
 
+  // ─── Live streaming state (SSE from /api/translate-stream) ──────────
+  // Each event from the server is shown to the user in real time so they
+  // can see exactly which step is running, how long each NVIDIA call takes,
+  // and live tokens as they arrive.
+  type LiveEvent = {
+    ts: number;
+    type: string;
+    text?: string;       // for log/chunk
+    stage?: string;      // for stage-start/stage-end
+    ok?: boolean;        // for stage-end
+    elapsedMs?: number;  // for stage-end
+    summary?: string;    // for stage-end
+    message?: string;    // for error
+  };
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+  const [liveText, setLiveText] = useState('');
+  const [showLiveLog, setShowLiveLog] = useState(true);
+
   // History
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
@@ -478,6 +496,88 @@ export default function AxTranslatorPage() {
 
   const inputTokens = estimateTokens(inputText);
   const isLargeInput = inputTokens > 4000;
+
+  // ─── Streaming translate (SSE) ───────────────────────────────────────
+  // Calls /api/translate-stream and consumes the SSE event stream.
+  // Each event updates liveEvents + (for chunks) liveText in real time.
+  // Returns the final TranslationResult, or throws on failure.
+  const streamTranslate = useCallback(async (
+    text: string,
+    srcLang: string,
+    tgtLang: string,
+  ): Promise<TranslationResult> => {
+    setLiveEvents([]);
+    setLiveText('');
+
+    const response = await fetch('/api/translate-stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        sourceLanguage: srcLang,
+        targetLanguage: tgtLang,
+        fast: true, // Fast mode = single translate call, live token streaming
+      }),
+    });
+
+    if (!response.ok || !response.body) {
+      const errText = await response.text().catch(() => '(no body)');
+      throw new Error(`Stream request failed (HTTP ${response.status}): ${errText.slice(0, 200)}`);
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let finalResult: TranslationResult | null = null;
+    let errorMessage: string | null = null;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // SSE events are separated by `\n\n`
+      let sepIdx;
+      while ((sepIdx = buffer.indexOf('\n\n')) !== -1) {
+        const raw = buffer.slice(0, sepIdx);
+        buffer = buffer.slice(sepIdx + 2);
+        // Each event is one or more `data: {json}` lines
+        for (const line of raw.split('\n')) {
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (!data) continue;
+          try {
+            const ev = JSON.parse(data);
+            const evTs = ev.ts || Date.now();
+            setLiveEvents((prev) => [...prev, { ts: evTs, ...ev }]);
+
+            if (ev.type === 'chunk' && typeof ev.text === 'string') {
+              setLiveText((prev) => prev + ev.text);
+              setCurrentStage('translate');
+            } else if (ev.type === 'stage-start' && ev.stage) {
+              setCurrentStage(ev.stage === 'translate' ? 'translate' : ev.stage === 'validate' ? 'validate' : ev.stage === 'refine' ? 'refine' : ev.stage);
+            } else if (ev.type === 'stage-end' && ev.stage === 'translate' && ev.ok) {
+              setCurrentStage('validate');
+            } else if (ev.type === 'pipeline-end' && ev.result) {
+              finalResult = ev.result;
+            } else if (ev.type === 'error' && ev.message) {
+              errorMessage = ev.message;
+            }
+          } catch {
+            // Ignore malformed lines.
+          }
+        }
+      }
+    }
+
+    if (errorMessage) {
+      throw new Error(errorMessage);
+    }
+    if (!finalResult) {
+      throw new Error('Stream ended without a final result');
+    }
+    return finalResult;
+  }, []);
 
   // ─── Handle Translate (with chunking for large text) ─────────────────
 
@@ -561,59 +661,70 @@ export default function AxTranslatorPage() {
         setResult(combinedResult);
         addHistory(inputText, combinedResult);
       } else {
-        // Normal single-request translation
-        const stageTimer = setInterval(() => {
-          setCurrentStage((prev) => {
-            if (prev === 'translate') return 'validate';
-            if (prev === 'validate') return 'refine';
-            return prev;
-          });
-        }, 3000);
+        // Normal single-request translation — use SSE streaming by default.
+        // Each event from the server updates liveEvents + liveText in real
+        // time, so the user sees live tokens + structured per-step logs.
+        // Falls back to /api/translate (non-streaming) if SSE fails.
+        try {
+          const data = await streamTranslate(inputText, sourceLanguage, targetLanguage);
 
-        const response = await fetch('/api/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            text: inputText,
-            sourceLanguage,
-            targetLanguage,
-          }),
-        });
-
-        clearInterval(stageTimer);
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          // Check for Vercel timeout specifically
-          if (response.status === 504 || (data.error && data.error.includes('timeout'))) {
-            setError('Translation timed out on server. This usually happens on Vercel Hobby plan. Set NVIDIA_API_KEY env var on Vercel for the full pipeline, or try shorter text.');
-          } else {
-            setError(data.error || 'Translation failed');
+          // Safety check: empty result
+          if (!data.translatedText || data.translatedText.trim() === '') {
+            setError('Translation returned empty result. Please try again.');
+            setIsTranslating(false);
+            setCurrentStage('');
+            return;
           }
-          setIsTranslating(false);
-          setCurrentStage('');
-          return;
-        }
 
-        // Safety check: if translated text is empty, show error
-        if (!data.translatedText || data.translatedText.trim() === '') {
-          setError('Translation returned empty result. Please try again.');
-          setIsTranslating(false);
-          setCurrentStage('');
-          return;
-        }
+          // Safety check: echo (model returned input unchanged)
+          if (data.translatedText.trim() === inputText.trim() && sourceLanguage !== targetLanguage && sourceLanguage !== 'auto') {
+            setError('The translation appears identical to the input text. The model may not have translated properly. Please try again.');
+            setIsTranslating(false);
+            setCurrentStage('');
+            return;
+          }
 
-        // Safety check: if translated text is identical to input (echo), show warning
-        if (data.translatedText.trim() === inputText.trim() && sourceLanguage !== targetLanguage && sourceLanguage !== 'auto') {
-          setError('The translation appears identical to the input text. The model may not have translated properly. Please try again.');
-          setIsTranslating(false);
-          setCurrentStage('');
-          return;
-        }
+          setResult(data);
+          addHistory(inputText, data);
+        } catch (streamErr: unknown) {
+          const streamMsg = streamErr instanceof Error ? streamErr.message : String(streamErr);
+          console.warn('[Translate] SSE stream failed, falling back to /api/translate:', streamMsg);
 
-        setResult(data);
-        addHistory(inputText, data);
+          // Fallback: non-streaming endpoint
+          const response = await fetch('/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              text: inputText,
+              sourceLanguage,
+              targetLanguage,
+              fast: true,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            if (response.status === 504 || (data.error && data.error.includes('timeout'))) {
+              setError(`Translation timed out. Last streaming error: ${streamMsg}`);
+            } else {
+              setError(data.error || `Translation failed (stream: ${streamMsg})`);
+            }
+            setIsTranslating(false);
+            setCurrentStage('');
+            return;
+          }
+
+          if (!data.translatedText || data.translatedText.trim() === '') {
+            setError('Translation returned empty result. Please try again.');
+            setIsTranslating(false);
+            setCurrentStage('');
+            return;
+          }
+
+          setResult(data);
+          addHistory(inputText, data);
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Network error occurred';
@@ -623,7 +734,7 @@ export default function AxTranslatorPage() {
       setCurrentStage('');
       setChunkProgress(null);
     }
-  }, [inputText, sourceLanguage, targetLanguage, isLargeInput]);
+  }, [inputText, sourceLanguage, targetLanguage, isLargeInput, streamTranslate]);
 
   // ─── Add to History ──────────────────────────────────────────────────
 
@@ -878,25 +989,105 @@ export default function AxTranslatorPage() {
                 </CardHeader>
                 <CardContent className="flex-1">
                   {isTranslating ? (
-                    <div className="min-h-[200px] flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-6">
-                      <div className="relative">
-                        <Loader2 className="size-10 animate-spin text-primary" />
-                        <Sparkles className="size-4 absolute top-0 right-0 text-amber-500 animate-pulse" />
+                    <div className="min-h-[200px] flex flex-col gap-3 rounded-lg border border-dashed p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="relative">
+                          <Loader2 className="size-7 animate-spin text-primary" />
+                          <Sparkles className="size-3 absolute top-0 right-0 text-amber-500 animate-pulse" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">
+                            {chunkProgress
+                              ? `${STAGE_LABELS[currentStage]} — Chunk ${chunkProgress.done + 1} of ${chunkProgress.total}`
+                              : STAGE_LABELS[currentStage] || 'Calling NVIDIA gpt-oss-120b...'}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {currentStage === 'chunking' && 'Splitting text into manageable chunks...'}
+                            {currentStage === 'translate' && 'Streaming tokens from NVIDIA gpt-oss-120b...'}
+                            {currentStage === 'validate' && 'Validating translation quality...'}
+                            {currentStage === 'refine' && 'Refining translation...'}
+                          </p>
+                        </div>
                       </div>
-                      <div className="text-center space-y-1">
-                        <p className="text-sm font-medium">
-                          {chunkProgress
-                            ? `${STAGE_LABELS[currentStage]} — Chunk ${chunkProgress.done + 1} of ${chunkProgress.total}`
-                            : STAGE_LABELS[currentStage] || 'Processing...'}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {currentStage === 'chunking' && 'Splitting text into manageable chunks...'}
-                          {currentStage === 'translate' && 'Sending to NVIDIA GPT-OSS 120B...'}
-                          {currentStage === 'validate' && 'Checking translation quality...'}
-                          {currentStage === 'refine' && 'Improving translation based on feedback...'}
-                        </p>
-                      </div>
-                      <div className="w-full max-w-xs space-y-1">
+
+                      {/* Live streamed text (appears token-by-token as chunks arrive) */}
+                      {liveText && (
+                        <div className="rounded-md bg-muted/50 p-3 max-h-[200px] overflow-y-auto">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                            {liveText}
+                            <span className="inline-block w-1.5 h-3.5 ml-0.5 bg-primary/70 animate-pulse align-text-bottom" />
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Live event log */}
+                      {showLiveLog && liveEvents.length > 0 && (
+                        <div className="rounded-md bg-zinc-950 text-zinc-100 p-3 max-h-[200px] overflow-y-auto font-mono text-[11px] leading-relaxed">
+                          <div className="flex items-center justify-between mb-1.5 sticky top-0 bg-zinc-950 pb-1 border-b border-zinc-800">
+                            <span className="text-zinc-400">live pipeline log ({liveEvents.length} events)</span>
+                            <button
+                              type="button"
+                              onClick={() => setShowLiveLog(false)}
+                              className="text-zinc-500 hover:text-zinc-200 text-[10px]"
+                            >
+                              hide
+                            </button>
+                          </div>
+                          {liveEvents.map((ev, i) => {
+                            const t = new Date(ev.ts);
+                            const ts = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}.${String(t.getMilliseconds()).padStart(3, '0')}`;
+                            if (ev.type === 'stage-start') {
+                              return (
+                                <div key={i} className="text-sky-300">
+                                  <span className="text-zinc-500">{ts}</span>{' '}
+                                  ▶ stage-start <span className="text-sky-200">{ev.stage}</span>
+                                </div>
+                              );
+                            }
+                            if (ev.type === 'log' && ev.text) {
+                              const isErr = ev.text.includes('TIMEOUT') || ev.text.includes('ERROR');
+                              const isRetry = ev.text.includes('retry');
+                              const isDone = ev.text.includes('done');
+                              return (
+                                <div key={i} className={isErr ? 'text-rose-300' : isRetry ? 'text-amber-300' : isDone ? 'text-emerald-300' : 'text-zinc-300'}>
+                                  <span className="text-zinc-500">{ts}</span>{' '}
+                                  {ev.text}
+                                </div>
+                              );
+                            }
+                            if (ev.type === 'chunk') {
+                              // Don't spam the log with chunk events (liveText already shows them)
+                              return null;
+                            }
+                            if (ev.type === 'stage-end') {
+                              return (
+                                <div key={i} className={ev.ok ? 'text-emerald-300' : 'text-rose-300'}>
+                                  <span className="text-zinc-500">{ts}</span>{' '}
+                                  ■ stage-end <span className={ev.ok ? 'text-emerald-200' : 'text-rose-200'}>{ev.stage}</span>{' '}
+                                  {ev.elapsedMs}ms {ev.ok ? '✓' : '✗'} {ev.summary}
+                                </div>
+                              );
+                            }
+                            if (ev.type === 'error') {
+                              return (
+                                <div key={i} className="text-rose-400 font-bold">
+                                  <span className="text-zinc-500">{ts}</span>{' '}
+                                  ✗ ERROR: {ev.message}
+                                </div>
+                              );
+                            }
+                            return (
+                              <div key={i} className="text-zinc-400">
+                                <span className="text-zinc-500">{ts}</span>{' '}
+                                {ev.type}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Progress bar */}
+                      <div className="w-full">
                         {chunkProgress ? (
                           <Progress
                             value={(chunkProgress.done / chunkProgress.total) * 100}

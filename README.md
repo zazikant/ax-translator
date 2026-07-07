@@ -1,4 +1,4 @@
-## Write a telegraphic speech based on the idea:
+## Write a telegraphic speech based on the idea::
 
 scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward
 
@@ -7,7 +7,7 @@ Answer:
 Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.
 
 
-## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens:
+## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens::
 
 
 Write a telegraphic speech based on the idea:
@@ -18,7 +18,7 @@ Answer:
 
 Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.
 
-## Extract only action items:
+## Extract only action items::
 
 The team needs to finish the report, schedule a meeting, and send invoices by Friday
 
@@ -26,7 +26,7 @@ The team needs to finish the report, schedule a meeting, and send invoices by Fr
 - Schedule a meeting  
 - Send invoices by Friday
 
-## Write sentence from Telegraphic speech idea:
+## Write sentence from Telegraphic speech idea::
 
 A man apple hungry eats 
 
@@ -40,7 +40,7 @@ The economy is struggling due to inflation
 
 economy, inflation, struggling
 
-## Write a telegraphic speech about: 
+## Write a telegraphic speech about:: 
 
 Climate change
 
@@ -50,7 +50,7 @@ Deforestation accelerates; biodiversity collapses; sea levels climb.
 Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies.  
 Future of humanity hangs in the balance.
 
-## Write a comedy telegraphic speech about:
+## Write a comedy telegraphic speech about::
 
 Man going to restaurant
 

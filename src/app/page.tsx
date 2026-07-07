@@ -621,6 +621,17 @@ export default function AxTranslatorPage() {
           line: `[pipeline] Large input: ${chunks.length} chunks × ~3K tokens each. Streaming each chunk through /api/translate-stream.`,
         }]);
 
+        // Warn about Vercel Edge 30s cap for multi-chunk inputs.
+        // Each chunk takes ~5-10s + 10-60s inter-chunk cooldown.
+        // 2 chunks: ~25s (fits). 3+ chunks: ~50s+ (will be killed).
+        if (chunks.length >= 3) {
+          setLiveEvents((prev) => [...prev, {
+            ts: Date.now(),
+            type: 'log',
+            line: `[pipeline] ⚠️ ${chunks.length} chunks with inter-chunk cooldowns may exceed Vercel's 30s function cap. Consider splitting into smaller inputs, or use a non-Vercel host for large documents.`,
+          }]);
+        }
+
         const translatedChunks: string[] = [];
         let totalQuality = 0;
         let totalAttempts = 0;
@@ -707,6 +718,67 @@ export default function AxTranslatorPage() {
             // Chunk failed all attempts — push a placeholder so join still works
             // (user will see which chunk failed in the live log)
             translatedChunks.push(`[Chunk ${i + 1} failed: ${lastChunkError.slice(0, 100)}]`);
+          }
+
+          // ─── Inter-chunk delay (rate-limit cooldown) ───────────────
+          // Wait before starting the next chunk so NVIDIA's rate-limit
+          // window has time to reset. Adaptive based on how the previous
+          // chunk went:
+          //   - Succeeded on first attempt: 10s (quick breather)
+          //   - Succeeded after retries:    30s (something was flaky)
+          //   - Failed all attempts:        60s (rate limit likely)
+          // Capped at 60s as requested.
+          //
+          // Note: On Vercel Edge (30s function cap), the 60s delay will
+          // get killed. The live log will show the countdown progress
+          // up to the kill point. For long delays, use a non-Vercel host.
+          if (i < chunks.length - 1) {
+            const isRateLimitError = /rate.?limit|429|too many requests/i.test(lastChunkError);
+            let delaySec = 10;
+            if (chunkResult === null) {
+              delaySec = isRateLimitError ? 60 : 30;
+            } else if (chunkResult.attempts > 1) {
+              delaySec = 30;
+            }
+            delaySec = Math.min(delaySec, 60);
+
+            setLiveEvents((prev) => [...prev, {
+              ts: Date.now(),
+              type: 'log',
+              line: `[pipeline] Cooldown: waiting ${delaySec}s before chunk ${i + 2}/${chunks.length} (lets NVIDIA rate-limit window reset)…`,
+            }]);
+
+            // Show countdown in the UI (updates every 5s so the user
+            // knows the pipeline isn't frozen)
+            const countdownStart = Date.now();
+            const countdownInterval = setInterval(() => {
+              const elapsed = Math.floor((Date.now() - countdownStart) / 1000);
+              const remaining = delaySec - elapsed;
+              if (remaining <= 0) {
+                clearInterval(countdownInterval);
+                return;
+              }
+              setLiveEvents((prev) => {
+                // Replace the last countdown log line instead of stacking
+                const withoutLastCountdown = prev.filter(
+                  (e) => !(e.type === 'log' && e.line?.includes('[countdown]'))
+                );
+                return [...withoutLastCountdown, {
+                  ts: Date.now(),
+                  type: 'log',
+                  line: `[countdown] ${remaining}s until chunk ${i + 2}/${chunks.length} starts…`,
+                }];
+              });
+            }, 5000);
+
+            await new Promise((resolve) => setTimeout(resolve, delaySec * 1000));
+            clearInterval(countdownInterval);
+
+            setLiveEvents((prev) => [...prev, {
+              ts: Date.now(),
+              type: 'log',
+              line: `[pipeline] Cooldown complete — starting chunk ${i + 2}/${chunks.length}.`,
+            }]);
           }
         }
 

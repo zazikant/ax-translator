@@ -115,10 +115,8 @@ scientist lab late night experiment fail again coffee cold notes scattered break
   },
   {
     title: 'Tag-Based Prompts',
-    prompt: `Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens::
-Write a telegraphic speech based on the idea::
-couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles`,
-    answer: `Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.`,
+    prompt: `Use tag-based prompts only. No grammar, no connectives, double colon separator, just core visual/semantic tokens ::\n  ::\ncouple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles`,
+    answer: `couple :: glasses :: winter coats :: selfie :: snow mountains :: alpine valley :: chalets :: blue sky :: clouds :: snowing :: warm smiles`,
   },
   {
     title: 'Extract Action Items',

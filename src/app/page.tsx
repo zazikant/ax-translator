@@ -186,7 +186,7 @@ export default function AxTranslatorPage() {
   // ─── Estimated tokens for input ──────────────────────────────────────
 
   const inputTokens = estimateTokens(inputText);
-  const isLargeInput = inputTokens > 8000;
+  const isLargeInput = inputTokens > 4000;
 
   // ─── Handle Translate (with chunking for large text) ─────────────────
 
@@ -211,7 +211,7 @@ export default function AxTranslatorPage() {
       // For large text (>8K tokens), chunk and translate in parts
       if (isLargeInput) {
         setCurrentStage('chunking');
-        const chunks = splitIntoChunks(inputText, 6000); // ~6K tokens per chunk
+        const chunks = splitIntoChunks(inputText, 3000); // ~3K tokens per chunk for better quality
         setChunkProgress({ done: 0, total: chunks.length });
 
         const translatedChunks: string[] = [];
@@ -549,7 +549,7 @@ export default function AxTranslatorPage() {
                 <CardFooter className="flex-col gap-2">
                   {isLargeInput && inputText.trim() && (
                     <p className="text-xs text-amber-500 text-center">
-                      Large text detected — will be translated in {Math.ceil(inputTokens / 6000)} chunks
+                      Large text detected — will be translated in {Math.ceil(inputTokens / 3000)} chunks
                     </p>
                   )}
                   <Button

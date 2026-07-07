@@ -52,3 +52,16 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Upload / Download directories
+/upload/
+/download/
+
+# Worklog
+worklog.md
+
+# Mini-services (reference only, not deployed)
+/mini-services/
+
+# Z scripts
+/.zscripts/

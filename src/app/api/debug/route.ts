@@ -56,6 +56,118 @@ export async function GET(request: Request) {
 
   const apiKey = process.env.NVIDIA_API_KEY;
 
+  // Test other candidate models for translation quality.
+  if (mode === 'chat-llama-70b') {
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: 'no key' }, { status: 500 });
+    }
+    try {
+      const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'meta/llama-3.1-70b-instruct',
+          messages: [{ role: 'user', content: 'Reply with: pong' }],
+          max_tokens: 32,
+          temperature: 0,
+          stream: false,
+        }),
+      });
+      const body = await r.text();
+      return NextResponse.json({
+        ok: r.ok,
+        mode: 'chat-llama-70b',
+        status: r.status,
+        ms: Date.now() - t0,
+        bodyPreview: body.slice(0, 400),
+      });
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        mode: 'chat-llama-70b',
+        error: `${(e as Error).name}: ${(e as Error).message}`,
+        ms: Date.now() - t0,
+      });
+    }
+  }
+
+  if (mode === 'chat-llama-33-70b') {
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: 'no key' }, { status: 500 });
+    }
+    try {
+      const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'meta/llama-3.3-70b-instruct',
+          messages: [{ role: 'user', content: 'Reply with: pong' }],
+          max_tokens: 32,
+          temperature: 0,
+          stream: false,
+        }),
+      });
+      const body = await r.text();
+      return NextResponse.json({
+        ok: r.ok,
+        mode: 'chat-llama-33-70b',
+        status: r.status,
+        ms: Date.now() - t0,
+        bodyPreview: body.slice(0, 400),
+      });
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        mode: 'chat-llama-33-70b',
+        error: `${(e as Error).name}: ${(e as Error).message}`,
+        ms: Date.now() - t0,
+      });
+    }
+  }
+
+  if (mode === 'chat-mistral') {
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: 'no key' }, { status: 500 });
+    }
+    try {
+      const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'mistralai/mistral-small-24b-instruct',
+          messages: [{ role: 'user', content: 'Reply with: pong' }],
+          max_tokens: 32,
+          temperature: 0,
+          stream: false,
+        }),
+      });
+      const body = await r.text();
+      return NextResponse.json({
+        ok: r.ok,
+        mode: 'chat-mistral',
+        status: r.status,
+        ms: Date.now() - t0,
+        bodyPreview: body.slice(0, 400),
+      });
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        mode: 'chat-mistral',
+        error: `${(e as Error).name}: ${(e as Error).message}`,
+        ms: Date.now() - t0,
+      });
+    }
+  }
+
   // Test with a different model (no reasoning_content, faster).
   // If this works on Vercel but gpt-oss-120b doesn't, the issue is
   // specific to gpt-oss-120b (rate-limit, reasoning path, etc).

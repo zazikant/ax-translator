@@ -36,6 +36,8 @@ A hungry man eats an apple.
 
 ## Rewrite each circular dependency as: Problem → External Cause → External Solution. Do not preserve any loopsentence from Telegraphic speech idea::
 
+(this is heavy framework for intellectual loops only.)
+
 Every paragraph now follows:
 Problem → External Cause → External Solution
 Zero loops. Zero circular returns. Pure linear logic.

@@ -1103,7 +1103,7 @@ export default function AxTranslatorPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {[
-                  "if you don't have a scene, use a \"seed thought\" and generate a prompt with the \"telegraphic speech about\" node.",
+                  "if you don't have a scene, use a \"seed thought\" and generate a prompt with the \"Telegraphic Speech: Compression and exploration\" node.",
                   "Split an 8‑word scene into two batches of four words each.",
                   "Process each batch with a \"four‑word max\" seed thought to generate telegraphic speech using \"telegraphic speech about\" node",
                   "Concatenate the two telegraphic outputs and feed them into the tag‑based prompt creation node.",

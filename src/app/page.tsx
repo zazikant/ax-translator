@@ -797,66 +797,71 @@ export default function AxTranslatorPage() {
         // Normal single-request translation — use SSE streaming by default.
         // Each event from the server updates liveEvents + liveText in real
         // time, so the user sees live tokens + structured per-step logs.
-        // Falls back to /api/translate (non-streaming) if SSE fails.
-        try {
-          const data = await streamTranslate(inputText, sourceLanguage, targetLanguage);
+        //
+        // Client-side retry loop (3 attempts) for resilience. The server-side
+        // /api/translate-stream now does 1 attempt × 18s timeout (was 2 × 12s),
+        // so we handle retries here to give the user 3 independent chances.
+        // Each retry is a fresh streamTranslate call with its own 18s budget.
+        const MAX_SINGLE_ATTEMPTS = 3;
+        let singleResult: TranslationResult | null = null;
+        let lastSingleError = '';
 
-          // Safety check: empty result
-          if (!data.translatedText || data.translatedText.trim() === '') {
-            setError('Translation returned empty result. Please try again.');
-            setIsTranslating(false);
-            setCurrentStage('');
-            return;
-          }
-
-          // Safety check: echo (model returned input unchanged)
-          if (data.translatedText.trim() === inputText.trim() && sourceLanguage !== targetLanguage && sourceLanguage !== 'auto') {
-            setError('The translation appears identical to the input text. The model may not have translated properly. Please try again.');
-            setIsTranslating(false);
-            setCurrentStage('');
-            return;
-          }
-
-          setResult(data);
-          addHistory(inputText, data);
-        } catch (streamErr: unknown) {
-          const streamMsg = streamErr instanceof Error ? streamErr.message : String(streamErr);
-          console.warn('[Translate] SSE stream failed, falling back to /api/translate:', streamMsg);
-
-          // Fallback: non-streaming endpoint
-          const response = await fetch('/api/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: inputText,
-              sourceLanguage,
-              targetLanguage,
-              fast: true,
-            }),
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            if (response.status === 504 || (data.error && data.error.includes('timeout'))) {
-              setError(`Translation timed out. Last streaming error: ${streamMsg}`);
-            } else {
-              setError(data.error || `Translation failed (stream: ${streamMsg})`);
+        for (let singleAttempt = 1; singleAttempt <= MAX_SINGLE_ATTEMPTS; singleAttempt++) {
+          try {
+            if (singleAttempt > 1) {
+              setLiveEvents((prev) => [...prev, {
+                ts: Date.now(),
+                type: 'log',
+                line: `[pipeline] Translation attempt ${singleAttempt}/${MAX_SINGLE_ATTEMPTS} — retrying…`,
+              }]);
             }
-            setIsTranslating(false);
-            setCurrentStage('');
-            return;
-          }
 
-          if (!data.translatedText || data.translatedText.trim() === '') {
-            setError('Translation returned empty result. Please try again.');
-            setIsTranslating(false);
-            setCurrentStage('');
-            return;
-          }
+            // keepLog defaults to false → liveEvents resets each attempt
+            // (so the log shows only the current attempt's events)
+            singleResult = await streamTranslate(inputText, sourceLanguage, targetLanguage);
 
-          setResult(data);
-          addHistory(inputText, data);
+            // Safety check: empty result
+            if (!singleResult.translatedText || singleResult.translatedText.trim() === '') {
+              throw new Error('Translation returned empty result.');
+            }
+
+            // Safety check: echo (model returned input unchanged)
+            if (singleResult.translatedText.trim() === inputText.trim() && sourceLanguage !== targetLanguage && sourceLanguage !== 'auto') {
+              throw new Error('The translation appears identical to the input text. The model may not have translated properly.');
+            }
+
+            // Success — break out of retry loop
+            break;
+          } catch (streamErr: unknown) {
+            const streamMsg = streamErr instanceof Error ? streamErr.message : String(streamErr);
+            lastSingleError = streamMsg;
+            console.warn(`[Translate] Attempt ${singleAttempt}/${MAX_SINGLE_ATTEMPTS} failed: ${streamMsg}`);
+
+            setLiveEvents((prev) => [...prev, {
+              ts: Date.now(),
+              type: 'log',
+              line: `[pipeline] Attempt ${singleAttempt}/${MAX_SINGLE_ATTEMPTS} FAILED: ${streamMsg.slice(0, 150)}`,
+            }]);
+
+            if (singleAttempt === MAX_SINGLE_ATTEMPTS) {
+              setLiveEvents((prev) => [...prev, {
+                ts: Date.now(),
+                type: 'log',
+                line: `[pipeline] All ${MAX_SINGLE_ATTEMPTS} attempts failed. Try again, or use shorter text.`,
+              }]);
+            }
+          }
+        }
+
+        if (singleResult && singleResult.translatedText && singleResult.translatedText.trim()) {
+          setResult(singleResult);
+          addHistory(inputText, singleResult);
+        } else {
+          // All retries failed — show error
+          setError(`Translation failed after ${MAX_SINGLE_ATTEMPTS} attempts. Last error: ${lastSingleError}`);
+          setIsTranslating(false);
+          setCurrentStage('');
+          return;
         }
       }
     } catch (err: unknown) {

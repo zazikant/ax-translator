@@ -18,13 +18,18 @@
 const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
-// Hard per-call timeout. gpt-oss-120b on Vercel Edge can take 8-15s TTFB
-// (NVIDIA is selectively slow for some Vercel edge IPs). 12s gives the call
-// a fair chance to start streaming while leaving room for the full pipeline
-// (translate + validate + refine = up to 3 calls) within Vercel's 30s edge
-// function limit.
-export const DEFAULT_CALL_TIMEOUT_MS = 12_000;
-export const DEFAULT_MAX_RETRIES = 2;
+// Per-call timeout: 18s.
+// gpt-oss-120b on Vercel Edge can take 8-15s TTFB for larger outputs
+// (longer translations, especially with high max_tokens). 12s was too
+// tight and caused both attempts to time out, producing a 24s total
+// failure with no recovery.
+//
+// 1 attempt only (was 2): 18s + 500ms backoff + 18s = 36.5s exceeds
+// Vercel Edge's 30s cap. With 1 attempt we stay safely under 30s.
+// Pipeline-level retry (in page.tsx for chunked mode) handles the
+// second attempt instead.
+export const DEFAULT_CALL_TIMEOUT_MS = 18_000;
+export const DEFAULT_MAX_RETRIES = 1;
 
 export interface NvidiaChatMessage {
   role: 'system' | 'user' | 'assistant';

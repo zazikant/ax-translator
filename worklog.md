@@ -53,3 +53,27 @@ Stage Summary:
 - openai/gpt-oss-120b model confirmed working via integrate.api.nvidia.com
 - 3-stage pipeline (translate → validate → refine) fully functional
 - Service runs on port 3030, Next.js on port 3000
+
+---
+Task ID: 3
+Agent: Main Agent
+Task: Fix production deployment — embed pipeline in Next.js
+
+Work Log:
+- Diagnosed: separate mini-service (port 3030) kept crashing in sandbox
+- Root cause: bun process exits when backgrounded; Temporal server unavailable
+- Solution: embedded translation pipeline directly in Next.js API routes
+- Created /src/lib/nvidia-client.ts — NVIDIA API client (OpenAI SDK compatible)
+- Created /src/lib/translation-pipeline.ts — DSPy-like pipeline (all Temporal patterns preserved)
+- Updated /src/app/api/translate/route.ts — calls pipeline directly, no proxy
+- Temporal mini-service code kept as reference for when Temporal server is available
+- Tested: "Hello world" → "नमस्ते दुनिया" (quality 98, 200 OK in 3.6s)
+- Tested: Complex text → quality 92 with minor issues noted (200 OK in 11.7s)
+- All lint checks pass
+- Updated Second Brain with final architecture
+
+Stage Summary:
+- Production is working end-to-end
+- No mini-service needed — pipeline runs inside Next.js process
+- Frontend + API + NVIDIA GPT-OSS 120B all working
+- Temporal patterns preserved in translation-pipeline.ts

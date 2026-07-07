@@ -18,14 +18,6 @@ Answer:
 
 Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.
 
-## Write sentence from Telegraphic speech idea:
-
-A man apple hungry eats 
-
-Answer:
-
-A hungry man eats an apple.
-
 ## Extract only action items:
 
 The team needs to finish the report, schedule a meeting, and send invoices by Friday
@@ -33,6 +25,14 @@ The team needs to finish the report, schedule a meeting, and send invoices by Fr
 - Finish the report  
 - Schedule a meeting  
 - Send invoices by Friday
+
+## Write sentence from Telegraphic speech idea:
+
+A man apple hungry eats 
+
+Answer:
+
+A hungry man eats an apple.
 
 ## Compress to keywords:
 

@@ -502,12 +502,20 @@ export default function AxTranslatorPage() {
   // Calls /api/translate-stream and consumes the SSE event stream.
   // Each event updates liveEvents + (for chunks) liveText in real time.
   // Returns the final TranslationResult, or throws on failure.
+  //
+  // Options:
+  //   keepLog: true → don't reset liveEvents (used by chunked mode so the
+  //            log accumulates across chunks). liveText is always reset
+  //            because each chunk is its own translation.
   const streamTranslate = useCallback(async (
     text: string,
     srcLang: string,
     tgtLang: string,
+    options: { keepLog?: boolean } = {},
   ): Promise<TranslationResult> => {
-    setLiveEvents([]);
+    if (!options.keepLog) {
+      setLiveEvents([]);
+    }
     setLiveText('');
 
     const response = await fetch('/api/translate-stream', {
@@ -596,68 +604,120 @@ export default function AxTranslatorPage() {
     setChunkProgress(null);
 
     try {
-      // For large text (>8K tokens), chunk and translate in parts
+      // For large text (>4K tokens), chunk and translate in parts.
+      // Each chunk goes through the SAME streaming path as a normal
+      // translation: /api/translate-stream → controlled NVIDIA call
+      // (18s timeout, 1 retry) → live log + token chunks.
+      // Per-chunk pipeline-level retry (3 attempts) for resilience.
       if (isLargeInput) {
         setCurrentStage('chunking');
         const chunks = splitIntoChunks(inputText, 3000); // ~3K tokens per chunk for better quality
         setChunkProgress({ done: 0, total: chunks.length });
 
+        // Live log: announce chunking
+        setLiveEvents((prev) => [...prev, {
+          ts: Date.now(),
+          type: 'log',
+          line: `[pipeline] Large input: ${chunks.length} chunks × ~3K tokens each. Streaming each chunk through /api/translate-stream.`,
+        }]);
+
         const translatedChunks: string[] = [];
         let totalQuality = 0;
         let totalAttempts = 0;
         let totalRefinements = 0;
+        let succeededChunks = 0;
+
+        const MAX_CHUNK_ATTEMPTS = 3;
 
         for (let i = 0; i < chunks.length; i++) {
           setCurrentStage('translate');
           setChunkProgress({ done: i, total: chunks.length });
 
-          const response = await fetch('/api/translate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              text: chunks[i],
-              sourceLanguage,
-              targetLanguage,
-            }),
-          });
+          // Live log: chunk start
+          setLiveEvents((prev) => [...prev, {
+            ts: Date.now(),
+            type: 'stage-start',
+            stage: `chunk-${i + 1}-${chunks.length}`,
+          }]);
 
-          const data = await response.json();
+          let chunkResult: TranslationResult | null = null;
+          let lastChunkError = '';
 
-          if (!response.ok) {
-            setError(data.error || `Translation failed on chunk ${i + 1}/${chunks.length}`);
-            setIsTranslating(false);
-            setCurrentStage('');
-            setChunkProgress(null);
-            return;
+          for (let chunkAttempt = 1; chunkAttempt <= MAX_CHUNK_ATTEMPTS; chunkAttempt++) {
+            try {
+              if (chunkAttempt > 1) {
+                setLiveEvents((prev) => [...prev, {
+                  ts: Date.now(),
+                  type: 'log',
+                  line: `[pipeline] Chunk ${i + 1}/${chunks.length} attempt ${chunkAttempt}/${MAX_CHUNK_ATTEMPTS} — retrying via stream…`,
+                }]);
+              }
+
+              // Use the SAME streaming path as single-translation.
+              // keepLog:true so events accumulate across chunks (each chunk's
+              // log/chunk events are appended, not overwritten).
+              chunkResult = await streamTranslate(
+                chunks[i], sourceLanguage, targetLanguage, { keepLog: true }
+              );
+
+              // Mark chunk as complete in the log
+              setLiveEvents((prev) => [...prev, {
+                ts: Date.now(),
+                type: 'stage-end',
+                stage: `chunk-${i + 1}-${chunks.length}`,
+                ok: true,
+                elapsedMs: 0,
+                summary: `${chunkResult.translatedText.length} chars translated`,
+              }]);
+
+              lastChunkError = '';
+              break; // success
+            } catch (chunkErr: unknown) {
+              const msg = chunkErr instanceof Error ? chunkErr.message : String(chunkErr);
+              lastChunkError = msg;
+              console.warn(`[Translate] Chunk ${i + 1}/${chunks.length} attempt ${chunkAttempt}/${MAX_CHUNK_ATTEMPTS} failed: ${msg}`);
+
+              setLiveEvents((prev) => [...prev, {
+                ts: Date.now(),
+                type: 'log',
+                line: `[pipeline] Chunk ${i + 1}/${chunks.length} attempt ${chunkAttempt}/${MAX_CHUNK_ATTEMPTS} FAILED: ${msg.slice(0, 150)}`,
+              }]);
+
+              if (chunkAttempt === MAX_CHUNK_ATTEMPTS) {
+                setLiveEvents((prev) => [...prev, {
+                  ts: Date.now(),
+                  type: 'log',
+                  line: `[pipeline] Chunk ${i + 1}/${chunks.length} failed ${MAX_CHUNK_ATTEMPTS}× — skipping (will use remaining chunks).`,
+                }]);
+              }
+            }
           }
 
-          if (!data.translatedText || data.translatedText.trim() === '') {
-            setError(`Translation returned empty result on chunk ${i + 1}/${chunks.length}. Please try again.`);
-            setIsTranslating(false);
-            setCurrentStage('');
-            setChunkProgress(null);
-            return;
+          if (chunkResult) {
+            // Echo detection per chunk
+            if (chunkResult.translatedText.trim() === chunks[i].trim()) {
+              console.warn(`[Translate] Chunk ${i + 1} returned same text — model echo detected`);
+            }
+            translatedChunks.push(chunkResult.translatedText);
+            totalQuality += chunkResult.qualityScore;
+            totalAttempts += chunkResult.attempts;
+            totalRefinements += chunkResult.refinements;
+            succeededChunks++;
+          } else {
+            // Chunk failed all attempts — push a placeholder so join still works
+            // (user will see which chunk failed in the live log)
+            translatedChunks.push(`[Chunk ${i + 1} failed: ${lastChunkError.slice(0, 100)}]`);
           }
-
-          // Echo detection per chunk
-          if (data.translatedText.trim() === chunks[i].trim()) {
-            console.warn(`[Translate] Chunk ${i + 1} returned same text — model echo detected`);
-          }
-
-          translatedChunks.push(data.translatedText);
-          totalQuality += data.qualityScore;
-          totalAttempts += data.attempts;
-          totalRefinements += data.refinements;
         }
 
         setChunkProgress({ done: chunks.length, total: chunks.length });
         const combinedResult: TranslationResult = {
           translatedText: translatedChunks.join('\n\n'),
-          qualityScore: Math.round(totalQuality / chunks.length),
+          qualityScore: succeededChunks > 0 ? Math.round(totalQuality / succeededChunks) : 0,
           attempts: totalAttempts,
           refinements: totalRefinements,
           model: 'openai/gpt-oss-120b',
-          pipeline: [`chunked-${chunks.length}`],
+          pipeline: [`chunked-${chunks.length}-${succeededChunks}ok`],
         };
         setResult(combinedResult);
         addHistory(inputText, combinedResult);

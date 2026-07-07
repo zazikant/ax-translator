@@ -9,31 +9,43 @@ import { runTranslationPipeline, runFastTranslation } from '@/lib/translation-pi
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { text, sourceLanguage, targetLanguage, apiKey, model, fast } = body;
+    const { text, sourceLanguage, targetLanguage, model, fast } = body;
 
-    // API key: use the one from frontend, or fall back to env variable
-    const resolvedApiKey = apiKey || process.env.NVIDIA_API_KEY;
+    // NVIDIA API key is no longer accepted from the client. It must be
+    // configured server-side via the NVIDIA_API_KEY environment variable
+    // (e.g. in Vercel Project Settings → Environment Variables).
+    const resolvedApiKey = process.env.NVIDIA_API_KEY;
 
-    if (!text || !targetLanguage || !resolvedApiKey) {
+    if (!text || !targetLanguage) {
       return NextResponse.json(
-        { error: 'Missing required fields: text, targetLanguage, apiKey (or set NVIDIA_API_KEY env var)' },
+        { error: 'Missing required fields: text, targetLanguage' },
         { status: 400 }
+      );
+    }
+
+    if (!resolvedApiKey) {
+      return NextResponse.json(
+        {
+          error:
+            'Server is missing NVIDIA_API_KEY environment variable. Configure it in Vercel Project Settings → Environment Variables (or your local .env file).',
+        },
+        { status: 500 }
       );
     }
 
     const input = {
       text,
-      sourceLanguage: sourceLanguage || 'auto',
+      sourceLanguage: sourceLanguage || 'en',
       targetLanguage,
       apiKey: resolvedApiKey,
       model: model || undefined,
     };
 
     // Choose pipeline mode:
-    // - fast=true → skip validate/refine (for Vercel Hobby / speed)
+    // - fast=true → skip validate/refine (for speed)
     // - fast=false → full translate→validate→refine pipeline
-    // - Default: fast mode on Vercel (no env key = likely Hobby), full pipeline if NVIDIA_API_KEY is set
-    const useFastMode = fast === true || (fast === undefined && !process.env.NVIDIA_API_KEY);
+    // - Default: full pipeline now that the env var is required
+    const useFastMode = fast === true;
 
     if (useFastMode) {
       console.log('[Translate API] Using FAST mode (translate only)');
@@ -52,7 +64,10 @@ export async function POST(request: NextRequest) {
     // If timeout error, suggest fast mode
     if (message.includes('timeout') || message.includes('timed out')) {
       return NextResponse.json(
-        { error: 'Translation timed out. Try using fast mode (add "fast": true to request) or set NVIDIA_API_KEY env var on Vercel Pro.' },
+        {
+          error:
+            'Translation timed out. Try using fast mode (add "fast": true to request), or upgrade the Vercel plan for a higher maxDuration.',
+        },
         { status: 504 }
       );
     }

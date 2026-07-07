@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -34,7 +33,6 @@ import {
 } from '@/components/ui/collapsible';
 import {
   Languages,
-  Key,
   ArrowRightLeft,
   Sparkles,
   CheckCircle,
@@ -42,8 +40,6 @@ import {
   Loader2,
   Copy,
   Check,
-  Eye,
-  EyeOff,
   Zap,
   RefreshCw,
   History,
@@ -57,6 +53,8 @@ import {
 const LANGUAGES = [
   { value: 'auto', label: 'Auto Detect' },
   { value: 'en', label: 'English' },
+  // 'auto' is hidden from the From-dropdown (see filter below), so the default
+  // source language visible to users is English.
   { value: 'hi', label: 'Hindi' },
   { value: 'es', label: 'Spanish' },
   { value: 'fr', label: 'French' },
@@ -449,30 +447,13 @@ function estimateTokens(text: string): number {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AxTranslatorPage() {
-  // API Key state — persist in sessionStorage so it survives page refreshes
-  const [apiKey, setApiKey] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('nvidia_api_key') || '';
-    }
-    return '';
-  });
-  const [showApiKey, setShowApiKey] = useState(false);
-
-  // Persist API key to sessionStorage whenever it changes
-  const handleApiKeyChange = (value: string) => {
-    setApiKey(value);
-    if (typeof window !== 'undefined') {
-      if (value) {
-        sessionStorage.setItem('nvidia_api_key', value);
-      } else {
-        sessionStorage.removeItem('nvidia_api_key');
-      }
-    }
-  };
+  // NVIDIA API key is no longer collected from the user. It is read from the
+  // NVIDIA_API_KEY environment variable on the server (e.g. configured in
+  // Vercel project settings) — see src/app/api/translate/route.ts.
 
   // Translation input state
   const [inputText, setInputText] = useState('');
-  const [sourceLanguage, setSourceLanguage] = useState('auto');
+  const [sourceLanguage, setSourceLanguage] = useState('en');
   const [targetLanguage, setTargetLanguage] = useState('en');
 
   // Translation output state
@@ -502,10 +483,6 @@ export default function AxTranslatorPage() {
 
   const handleTranslate = useCallback(async () => {
     if (!inputText.trim()) return;
-    if (!apiKey.trim()) {
-      setError('Please enter your NVIDIA API key');
-      return;
-    }
     if (!targetLanguage) {
       setError('Please select a target language');
       return;
@@ -540,7 +517,6 @@ export default function AxTranslatorPage() {
               text: chunks[i],
               sourceLanguage,
               targetLanguage,
-              apiKey,
             }),
           });
 
@@ -601,7 +577,6 @@ export default function AxTranslatorPage() {
             text: inputText,
             sourceLanguage,
             targetLanguage,
-            apiKey,
           }),
         });
 
@@ -648,7 +623,7 @@ export default function AxTranslatorPage() {
       setCurrentStage('');
       setChunkProgress(null);
     }
-  }, [inputText, sourceLanguage, targetLanguage, apiKey, isLargeInput]);
+  }, [inputText, sourceLanguage, targetLanguage, isLargeInput]);
 
   // ─── Add to History ──────────────────────────────────────────────────
 
@@ -752,46 +727,6 @@ export default function AxTranslatorPage() {
 
           {/* ─── Translate Tab ──────────────────────────────────────────── */}
           <TabsContent value="translate" className="mt-6 space-y-6">
-            {/* API Key Card */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <Key className="size-4 text-muted-foreground" />
-                  <CardTitle className="text-base">NVIDIA API Key</CardTitle>
-                </div>
-                <CardDescription>
-                  Your API key is saved in your browser session (survives refresh, cleared on tab close). Get one from{' '}
-                  <a
-                    href="https://build.nvidia.com/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary underline underline-offset-4 hover:text-primary/80"
-                  >
-                    build.nvidia.com
-                  </a>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="relative">
-                  <Input
-                    type={showApiKey ? 'text' : 'password'}
-                    placeholder="nvapi-..."
-                    value={apiKey}
-                    onChange={(e) => handleApiKeyChange(e.target.value)}
-                    className="pr-10 font-mono"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                  >
-                    {showApiKey ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Language Selection */}
             <Card>
               <CardHeader className="pb-3">
@@ -806,7 +741,8 @@ export default function AxTranslatorPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {LANGUAGES.map((lang) => (
+                        {/* Hide "Auto Detect" from the From dropdown — English is the default */}
+                        {LANGUAGES.filter((l) => l.value !== 'auto').map((lang) => (
                           <SelectItem key={lang.value} value={lang.value}>
                             {lang.label}
                           </SelectItem>
@@ -820,7 +756,6 @@ export default function AxTranslatorPage() {
                         variant="outline"
                         size="icon"
                         onClick={handleSwapLanguages}
-                        disabled={sourceLanguage === 'auto'}
                         className="shrink-0 mb-0.5"
                       >
                         <ArrowRightLeft className="size-4" />
@@ -882,7 +817,7 @@ export default function AxTranslatorPage() {
                   )}
                   <Button
                     onClick={handleTranslate}
-                    disabled={isTranslating || !inputText.trim() || !apiKey.trim()}
+                    disabled={isTranslating || !inputText.trim()}
                     className="w-full gap-2"
                     size="lg"
                   >

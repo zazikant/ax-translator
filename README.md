@@ -70,8 +70,8 @@ Translate text into clean, understandable language using a DSPy-inspired pipelin
 - **Quality Scoring**: Automatic validation with quality score (0-100)
 - **Surgical Refinement**: If quality is low, targeted fixes are applied
 - **26 Languages**: Including Hindi, Spanish, French, Japanese, Chinese, Arabic, and more
-- **Auto-Detect**: Automatic source language detection
-- **Session-Only API Key**: Your NVIDIA API key is never stored on the server
+- **Default Source: English**: The "From" dropdown defaults to English (Auto Detect is hidden from the UI)
+- **Server-Side API Key**: NVIDIA API key is read from the `NVIDIA_API_KEY` environment variable on Vercel — never sent from the browser
 
 ## Tech Stack
 
@@ -98,12 +98,18 @@ npm run dev
 
 ### Environment Variables
 
-No server-side environment variables required. The NVIDIA API key is provided by the user in the browser UI and passed directly to the API — it's never stored.
+The NVIDIA API key **must** be set as a server-side environment variable (it is no longer collected from the browser UI).
 
-If you want to set a default API key (optional):
+Get an API key from [build.nvidia.com](https://build.nvidia.com/), then configure it in Vercel:
+
+- Vercel Dashboard → your project → **Settings → Environment Variables**
+- Key: `NVIDIA_API_KEY`
+- Value: `nvapi-xxxxx`
+- Select the environments (Production / Preview / Development)
+
+For local development, create a `.env` file (already in `.gitignore`):
 
 ```bash
-# Optional — users can also enter their key in the UI
 NVIDIA_API_KEY=nvapi-xxxxx
 ```
 
@@ -111,7 +117,7 @@ NVIDIA_API_KEY=nvapi-xxxxx
 
 1. Push to GitHub
 2. Import repo in [vercel.com](https://vercel.com)
-3. No environment variables required (API key is user-provided)
+3. Add the `NVIDIA_API_KEY` environment variable in Project Settings (see below)
 4. Deploy!
 
 ## How the Pipeline Works

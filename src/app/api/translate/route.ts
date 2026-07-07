@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Vercel serverless function timeout — translation pipeline can take up to 60s
-// (Requires Vercel Pro. On Hobby plan, max is 10s which may timeout on long texts)
-export const maxDuration = 60;
+// Edge runtime — Vercel's Node serverless path hangs on openai/gpt-oss-120b
+// (confirmed via /api/debug). Edge uses a different egress that works.
+// See /api/debug?mode=chat-oss-big for the smoking gun.
+export const maxDuration = 30;
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 import { runTranslationPipeline, runFastTranslation } from '@/lib/translation-pipeline';
 

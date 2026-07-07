@@ -226,6 +226,46 @@ You will get output as Objective, Narrative flow, Subject and Background.`,
     answer: null,
   },
   {
+    title: 'Photo composition brief — Subject and Background',
+    prompt: `Only pass on objective and narrative flow from above.
+
+
+Convert telegraphic notes into a structured photo composition brief with two sections: Subject and Background. Preserve all descriptive details as concise bullet points. tag core‑visuals, semantic‑tokens. omit grammar, connective‑words. Output should read like cinematographer's shot notes concise, visually focused . Style
+- light, color, texture, motion, mood, sensory.
+
+Input::
+
+
+*Objective:* Capture quiet intensity and introspection of an aged chess enthusiast playing alone in public.
+
+*Narrative Flow*
+1. Establish setting – outdoor café, relaxed public backdrop.
+2. Introduce subject – solitary elderly player draws eye.
+3. Highlight conflict – empty opponent's chair creates visual tension, sparks curiosity.
+4. Convey emotion – contemplative posture, focused expression signal concentration and melancholy.
+5. Resolve visual story – image leaves audience pondering the solitary game's backstory.
+
+
+Answer:
+
+*Subject*
+- elderly chess player, age visible, worn attire, seated café table center
+- hands hovering pieces, gaze locked board, mid‑game thought
+- empty opponent chair foreground, emphasizes solitude, anticipation
+
+*Background*
+- outdoor café, relaxed public backdrop, natural daylight
+- soft shadows, tranquil afternoon mood
+- moderate aperture, player and chair sharp, café blur unobtrusive
+- warm muted palette, nostalgia, subtle clothing‑furniture contrast
+- texture: facial lines, chess‑piece wood grain, table surface
+- motion: still, contemplative posture
+- sensory: quiet intensity, introspection
+
+#core-visuals #semantic‑tokens`,
+    answer: null,
+  },
+  {
     title: 'Climate Change Telegraphic Speech',
     prompt: `Write a telegraphic speech about::
 Climate change

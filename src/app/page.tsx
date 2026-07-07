@@ -472,7 +472,8 @@ export default function AxTranslatorPage() {
   type LiveEvent = {
     ts: number;
     type: string;
-    text?: string;       // for log/chunk
+    text?: string;       // for chunk
+    line?: string;       // for log (server sends `line`, not `text`)
     stage?: string;      // for stage-start/stage-end
     ok?: boolean;        // for stage-end
     elapsedMs?: number;  // for stage-end
@@ -1044,14 +1045,17 @@ export default function AxTranslatorPage() {
                                 </div>
                               );
                             }
-                            if (ev.type === 'log' && ev.text) {
-                              const isErr = ev.text.includes('TIMEOUT') || ev.text.includes('ERROR');
-                              const isRetry = ev.text.includes('retry');
-                              const isDone = ev.text.includes('done');
+                            if (ev.type === 'log') {
+                              // Server sends log text in `line` field; fall back to `text` for safety.
+                              const lineText = ev.line ?? ev.text ?? '';
+                              if (!lineText) return null;
+                              const isErr = lineText.includes('TIMEOUT') || lineText.includes('ERROR');
+                              const isRetry = lineText.includes('retry');
+                              const isDone = lineText.includes('done');
                               return (
                                 <div key={i} className={isErr ? 'text-rose-300' : isRetry ? 'text-amber-300' : isDone ? 'text-emerald-300' : 'text-zinc-300'}>
                                   <span className="text-zinc-500">{ts}</span>{' '}
-                                  {ev.text}
+                                  {lineText}
                                 </div>
                               );
                             }

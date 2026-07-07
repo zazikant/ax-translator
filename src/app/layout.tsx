@@ -14,10 +14,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Z.ai Code Scaffold - AI-Powered Development",
-  description: "Modern Next.js scaffold optimized for AI-powered development with Z.ai. Built with TypeScript, Tailwind CSS, and shadcn/ui.",
-  keywords: ["Z.ai", "Next.js", "TypeScript", "Tailwind CSS", "shadcn/ui", "AI development", "React"],
-  authors: [{ name: "Z.ai Team" }],
+  title: "Ax Translator — DSPy-like Translation Pipeline",
+  description: "Translate text to clean, understandable language using a DSPy-inspired pipeline powered by NVIDIA GPT-OSS 120B with Temporal orchestration.",
+  keywords: ["Ax Translator", "DSPy", "translation", "NVIDIA", "LLM", "Temporal", "TypeScript"],
+  authors: [{ name: "Ax Translator" }],
   icons: {
     icon: "https://z-cdn.chatglm.cn/z-ai/static/logo.svg",
   },

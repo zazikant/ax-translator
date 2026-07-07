@@ -17,9 +17,9 @@ import { runFastTranslationStream, runTranslationPipelineStream, PipelineEvent }
  *
  * Each LLM call is a "controlled call": 10s timeout, 1 retry, structured logs.
  */
-export const maxDuration = 60;
+export const maxDuration = 30; // Edge runtime limit on Vercel
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 function sse(event: PipelineEvent): string {
   return `data: ${JSON.stringify(event)}\n\n`;

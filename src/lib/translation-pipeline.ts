@@ -78,10 +78,29 @@ Source: ${input.text.substring(0, 200)}... → ${input.targetLanguage}`;
 
 // ─── Activity 1: translateText ───────────────────────────────────────────────
 
-async function translateText(input: TranslationRequest): Promise<{ translatedText: string; model: string }> {
+async function translateText(input: TranslationRequest, isRetry: boolean = false): Promise<{ translatedText: string; model: string }> {
   const srcLabel = input.sourceLanguage === 'auto' ? 'the detected source language' : input.sourceLanguage;
 
-  const systemPrompt = `You are a professional translator. Translate the given text from ${srcLabel} to ${input.targetLanguage}.
+  let systemPrompt: string;
+  let userContent: string;
+
+  if (isRetry) {
+    // More forceful prompt for retries — explicitly say NOT to echo
+    systemPrompt = `You are a professional translator. Your task is to TRANSLATE the given text from ${srcLabel} into ${input.targetLanguage}.
+
+IMPORTANT: You MUST output the text IN ${input.targetLanguage.toUpperCase()}. Do NOT output the same text in the original language. This is a translation task, not a repetition task.
+
+Rules:
+- Produce a clean, natural, and understandable translation in ${input.targetLanguage}
+- Preserve the original meaning exactly — do not add, remove, or change information
+- Use natural phrasing that a native speaker of ${input.targetLanguage} would use
+- Output ONLY the translated text in ${input.targetLanguage}, nothing else.`;
+
+    userContent = `Translate the following text from ${srcLabel} to ${input.targetLanguage}:
+
+${input.text}`;
+  } else {
+    systemPrompt = `You are a professional translator. Translate the given text from ${srcLabel} to ${input.targetLanguage}.
 
 Rules:
 - Produce a clean, natural, and understandable translation
@@ -90,9 +109,13 @@ Rules:
 - Maintain the same tone and register (formal, informal, technical, etc.)
 - If the text contains idioms, translate them to equivalent expressions in the target language
 - If the text contains technical terms, use the standard terminology in the target language
-- Output ONLY the translated text, nothing else.`;
+- Output ONLY the translated text in ${input.targetLanguage}, nothing else
+- Do NOT output the original text — you must output the translation`;
 
-  const result = await callNvidiaLLM(systemPrompt, input.text, input.apiKey, input.model, 2048, 0.3);
+    userContent = `Translate the following text from ${srcLabel} to ${input.targetLanguage}:\n\n${input.text}`;
+  }
+
+  const result = await callNvidiaLLM(systemPrompt, userContent, input.apiKey, input.model, 2048, 0.3);
 
   // Strip any markdown code blocks or quotes the LLM might add
   const cleaned = result
@@ -224,6 +247,24 @@ export async function runTranslationPipeline(input: TranslationRequest): Promise
       const result = await translateText(input);
       translatedText = result.translatedText;
       model = result.model;
+
+      // ── Echo Detection: If model returned the same text, retry with forceful prompt ──
+      if (translatedText.trim().toLowerCase() === input.text.trim().toLowerCase() && input.sourceLanguage !== input.targetLanguage) {
+        console.log('[Pipeline] Echo detected — model returned input text. Retrying with explicit prompt...');
+        pipeline.push('echo-detected');
+        attempt++;
+        pipeline.push('translate-retry');
+
+        const retryResult = await translateText(input, true);
+        translatedText = retryResult.translatedText;
+
+        // If still echoing after retry, note it but continue
+        if (translatedText.trim().toLowerCase() === input.text.trim().toLowerCase()) {
+          console.log('[Pipeline] Echo persists after retry — continuing with original output');
+          pipeline.push('echo-persist');
+        }
+      }
+
       resumeFrom = 'validate';
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : String(err);
@@ -239,9 +280,16 @@ export async function runTranslationPipeline(input: TranslationRequest): Promise
         console.log(`[Pipeline] Translate retry context: ${fixContext.substring(0, 200)}`);
 
         try {
-          const result = await translateText(input);
+          const result = await translateText(input, true);
           translatedText = result.translatedText;
           model = result.model;
+
+          // Echo detection on retry too
+          if (translatedText.trim().toLowerCase() === input.text.trim().toLowerCase() && input.sourceLanguage !== input.targetLanguage) {
+            console.log('[Pipeline] Echo detected on retry — continuing');
+            pipeline.push('echo-on-retry');
+          }
+
           resumeFrom = 'validate';
         } catch (err2: unknown) {
           const errorMsg2 = err2 instanceof Error ? err2.message : String(err2);

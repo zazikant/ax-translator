@@ -134,8 +134,10 @@ export async function callNvidiaLLM(
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content ?? '';
     if (!content) {
+      console.error('[NVIDIA] Empty response. Full data:', JSON.stringify(data).substring(0, 500));
       throw new Error('NVIDIA API returned empty response');
     }
+    console.log(`[NVIDIA] Response received. Content length: ${content.length}, preview: "${content.substring(0, 150)}"`);
     return content;
   } catch (err: unknown) {
     clearTimeout(timeout);

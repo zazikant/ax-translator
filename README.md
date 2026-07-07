@@ -4,7 +4,7 @@ The economy is struggling due to inflation
 
 economy, inflation, struggling
 
-## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens.
+## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens:
 
 
 Write a telegraphic speech based on the idea:

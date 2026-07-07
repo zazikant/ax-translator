@@ -1105,7 +1105,7 @@ export default function AxTranslatorPage() {
                 {[
                   "if you don't have a scene, use a \"seed thought\" and generate a prompt with the \"Telegraphic Speech: Compression and exploration\" node.",
                   "Split an 8‑word scene into two batches of four words each.",
-                  "Process each batch with a \"four‑word max\" seed thought to generate telegraphic speech using \"telegraphic speech about\" node",
+                  "Process each batch with a \"four‑word max\" seed thought to generate telegraphic speech using \"Telegraphic Speech: Compression and exploration\" node",
                   "Concatenate the two telegraphic outputs and feed them into the tag‑based prompt creation node.",
                   "Use the \"sentence from telegraphic speech tag\" node to combine the tags into a final sentence.",
                   "Pass that sentence to the \"structured, photo composition brief\" node.",

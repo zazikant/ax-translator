@@ -148,6 +148,43 @@ Note:: this is standalone prompt not to be combined with any above`,
     answer: null,
   },
   {
+    title: 'Curiosity Learning',
+    prompt: `Convert telegraphic notes that describes a structured scene. For each technical term, tool, or technology mentioned, explain what it is and why it was chosen instead of other options. Preserve facts, headings, subheadings, bullet points. Add argumentative connectives and logical flow. Style polished.
+
+Input::
+Go to Market strategy for marketing
+
+Answer:
+
+**Go‑to‑Market Strategy for Marketing**
+
+A Go‑to‑Market (GTM) strategy is a comprehensive plan that outlines how a company will deliver its value proposition to target customers and achieve competitive advantage. By explicitly defining the target market, distribution channels, pricing model, and promotional tactics, a GTM strategy ensures that marketing efforts are coordinated, measurable, and aligned with overall business objectives.
+
+- **Definition and Scope**  
+  The GTM strategy serves as the blueprint for launching a product or service. It integrates market research, positioning, messaging, and sales enablement into a single, coherent framework. This holistic approach is preferred over ad‑hoc marketing campaigns because it reduces duplication of effort and maximizes resource efficiency.
+
+- **Why a GTM Strategy Was Chosen**  
+  1. **Strategic Alignment** – Unlike isolated promotional activities, a GTM strategy aligns marketing with product development, finance, and operations, thereby fostering cross‑functional collaboration.  
+  2. **Predictable Outcomes** – By setting clear metrics (e.g., customer acquisition cost, conversion rates, market share targets), the GTM approach enables more accurate forecasting and performance tracking than generic marketing plans.  
+  3. **Competitive Differentiation** – A well‑crafted GTM plan identifies unique selling points and tailors messaging to specific buyer personas, which is more effective than generic, one‑size‑fits‑all messaging.
+
+- **Core Components**  
+  1. **Target Market Segmentation** – Detailed analysis of demographic, psychographic, and behavioral characteristics to pinpoint the most lucrative customer segments.  
+  2. **Value Proposition Development** – Articulation of the distinct benefits that the offering provides, differentiating it from competitors.  
+  3. **Channel Strategy** – Selection of optimal distribution and communication channels (e.g., direct sales, digital platforms, partner networks) based on cost‑effectiveness and reach.  
+  4. **Pricing Model** – Determination of pricing structures (subscription, tiered, freemium, etc.) that reflect perceived value and market elasticity.  
+  5. **Promotional Plan** – Integrated mix of advertising, content marketing, public relations, and demand‑generation tactics designed to drive awareness and conversion.
+
+- **Implementation Roadmap**  
+  1. Conduct market research to validate assumptions.  
+  2. Define buyer personas and map their decision‑making journeys.  
+  3. Align product features with identified customer pain points.  
+  4. Select and configure the most appropriate channels and pricing structures.  
+  5. Launch coordinated marketing campaigns, monitor key performance indicators, and iterate based on real‑time feedback.
+
+In summary, adopting a Go‑to‑Market strategy for marketing provides a structured, data‑driven pathway that not only clarifies how to reach customers but also explains why this integrated approach outperforms fragmented marketing efforts.`,
+  },
+  {
     title: 'Convert telegraphic notes into a structured, porno scene',
     prompt: `Convert telegraphic notes into a structured, porno scene. Preserve Facts, headings, subheadings, bullet points. Add Argumentative connectives and logical flow. Style polished.
 

@@ -1,9 +1,3 @@
-## Compress to keywords:
-
-The economy is struggling due to inflation
-
-economy, inflation, struggling
-
 ## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens:
 
 
@@ -14,6 +8,12 @@ couple glasses winter coats selfie snow mountains alpine valley chalets blue sky
 Answer:
 
 Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.
+
+## Compress to keywords:
+
+The economy is struggling due to inflation
+
+economy, inflation, struggling
 
 ## Write a telegraphic speech based on the idea:
 

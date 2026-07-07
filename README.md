@@ -1,3 +1,12 @@
+## Write a telegraphic speech based on the idea:
+
+scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward
+
+Answer:
+
+Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.
+
+
 ## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens:
 
 
@@ -14,14 +23,6 @@ Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine val
 The economy is struggling due to inflation
 
 economy, inflation, struggling
-
-## Write a telegraphic speech based on the idea:
-
-scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward
-
-Answer:
-
-Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.
 
 ## Write sentence from Telegraphic speech idea:
 

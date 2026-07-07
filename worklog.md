@@ -31,3 +31,25 @@ Stage Summary:
 - Next.js app compiles and serves on port 3000
 - All lint checks pass
 - Architecture documented in Second Brain
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Fix NVIDIA API model and test end-to-end translation
+
+Work Log:
+- Updated model from nvidia/llama-3.1-nemotron-70b-instruct to openai/gpt-oss-120b
+- Updated callNvidiaLLM to use system + user message format (OpenAI SDK compatible)
+- Added stream: false to API calls
+- Fixed Context.current().heartbeat() crash outside Temporal worker with safeHeartbeat() wrapper
+- Updated validateTranslation and refineTranslation to use new callNvidiaLLM signature
+- Updated frontend badge to show "GPT-OSS 120B"
+- Tested translation: "Hello world" → "नमस्ते दुनिया" (quality score 98, 0 refinements)
+- Updated Second Brain architecture doc with corrected model and bug fix info
+- All lint checks pass
+
+Stage Summary:
+- NVIDIA API integration is working end-to-end
+- openai/gpt-oss-120b model confirmed working via integrate.api.nvidia.com
+- 3-stage pipeline (translate → validate → refine) fully functional
+- Service runs on port 3030, Next.js on port 3000

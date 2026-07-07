@@ -12,6 +12,19 @@
 
 import { Context } from '@temporalio/activity';
 
+// ─── Safe Heartbeat ──────────────────────────────────────────────────────────
+// Context.current().heartbeat() only works inside a Temporal worker.
+// When running in direct mode, it throws — so we wrap it safely.
+
+function safeHeartbeat(message: string): void {
+  try {
+    Context.current().heartbeat(message);
+  } catch {
+    // Not running inside Temporal worker — just log to console
+    console.log(`[Activity] ${message}`);
+  }
+}
+
 // ─── Types (DSPy-like Signatures) ────────────────────────────────────────────
 
 export interface TranslateInput {
@@ -62,10 +75,11 @@ export interface RefineOutput {
 // ─── NVIDIA API Client ───────────────────────────────────────────────────────
 
 const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
-const DEFAULT_MODEL = 'nvidia/llama-3.1-nemotron-70b-instruct';
+const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 
 async function callNvidiaLLM(
-  prompt: string,
+  systemPrompt: string,
+  userContent: string,
   apiKey: string,
   model?: string,
   maxTokens: number = 2048,
@@ -76,6 +90,7 @@ async function callNvidiaLLM(
   const timeout = setTimeout(() => controller.abort(), 120_000); // 2 min timeout
 
   try {
+    console.log(`[NVIDIA API] Calling model: ${modelName}`);
     const response = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
@@ -84,9 +99,13 @@ async function callNvidiaLLM(
       },
       body: JSON.stringify({
         model: modelName,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userContent },
+        ],
         max_tokens: maxTokens,
         temperature,
+        stream: false,
       }),
       signal: controller.signal,
     });
@@ -103,6 +122,7 @@ async function callNvidiaLLM(
     if (!content) {
       throw new Error('NVIDIA API returned empty response');
     }
+    console.log(`[NVIDIA API] Response received (${content.length} chars)`);
     return content;
   } catch (err: any) {
     clearTimeout(timeout);
@@ -116,9 +136,9 @@ async function callNvidiaLLM(
 // ─── Activity 1: translateText ───────────────────────────────────────────────
 
 export async function translateText(input: TranslateInput): Promise<TranslateOutput> {
-  Context.current().heartbeat('Starting translation');
+  safeHeartbeat('Starting translation');
 
-  const prompt = `You are a professional translator. Translate the following text from ${input.sourceLanguage} to ${input.targetLanguage}.
+  const systemPrompt = `You are a professional translator. Translate the given text from ${input.sourceLanguage === 'auto' ? 'the detected source language' : input.sourceLanguage} to ${input.targetLanguage}.
 
 Rules:
 - Produce a clean, natural, and understandable translation
@@ -127,16 +147,10 @@ Rules:
 - Maintain the same tone and register (formal, informal, technical, etc.)
 - If the text contains idioms, translate them to equivalent expressions in the target language
 - If the text contains technical terms, use the standard terminology in the target language
+- Output ONLY the translated text, nothing else.`;
 
-Text to translate:
-"""
-${input.text}
-"""
-
-Output ONLY the translated text, nothing else.`;
-
-  Context.current().heartbeat('Calling NVIDIA LLM for translation');
-  const result = await callNvidiaLLM(prompt, input.apiKey, input.model, 2048, 0.3);
+  safeHeartbeat('Calling NVIDIA LLM for translation');
+  const result = await callNvidiaLLM(systemPrompt, input.text, input.apiKey, input.model, 2048, 0.3);
 
   // Strip any markdown code blocks or quotes the LLM might add
   const cleaned = result
@@ -155,21 +169,11 @@ Output ONLY the translated text, nothing else.`;
 // ─── Activity 2: validateTranslation ─────────────────────────────────────────
 
 export async function validateTranslation(input: ValidateInput): Promise<ValidateOutput> {
-  Context.current().heartbeat('Starting validation');
+  safeHeartbeat('Starting validation');
 
-  const prompt = `You are a translation quality reviewer. Evaluate the following translation.
+  const systemPrompt = `You are a translation quality reviewer. Evaluate the provided translation and respond in JSON format.
 
-Source text (${input.sourceLanguage}):
-"""
-${input.originalText}
-"""
-
-Translation (${input.targetLanguage}):
-"""
-${input.translatedText}
-"""
-
-Evaluate the translation on these criteria:
+Evaluate on these criteria:
 1. Accuracy: Does the translation preserve the original meaning?
 2. Fluency: Is the translation natural and well-formed in the target language?
 3. Completeness: Is any information missing or added?
@@ -185,8 +189,18 @@ Respond in this exact JSON format:
 
 If the translation is good enough for practical use, set isValid to true even if minor improvements are possible.`;
 
-  Context.current().heartbeat('Calling NVIDIA LLM for validation');
-  const result = await callNvidiaLLM(prompt, input.apiKey, input.model, 1024, 0.1);
+  const userContent = `Source text (${input.sourceLanguage}):
+"""
+${input.originalText}
+"""
+
+Translation (${input.targetLanguage}):
+"""
+${input.translatedText}
+"""`;
+
+  safeHeartbeat('Calling NVIDIA LLM for validation');
+  const result = await callNvidiaLLM(systemPrompt, userContent, input.apiKey, input.model, 1024, 0.1);
 
   try {
     // Try to parse JSON from the response
@@ -209,13 +223,15 @@ If the translation is good enough for practical use, set isValid to true even if
 // ─── Activity 3: refineTranslation ───────────────────────────────────────────
 
 export async function refineTranslation(input: RefineInput): Promise<RefineOutput> {
-  Context.current().heartbeat('Starting refinement');
+  safeHeartbeat('Starting refinement');
 
   const issuesList = input.issues.map(i => `- ${i}`).join('\n');
 
-  const prompt = `You are a professional translator refining a translation.
+  const systemPrompt = `You are a professional translator refining a translation.
+Fix ALL the issues identified while keeping the rest of the translation unchanged.
+Output ONLY the improved translation, nothing else.`;
 
-Source text (${input.sourceLanguage}):
+  const userContent = `Source text (${input.sourceLanguage}):
 """
 ${input.originalText}
 """
@@ -226,13 +242,10 @@ ${input.translatedText}
 """
 
 Issues found with the current translation:
-${issuesList}
+${issuesList}`;
 
-Fix ALL the issues above while keeping the rest of the translation unchanged.
-Output ONLY the improved translation, nothing else.`;
-
-  Context.current().heartbeat('Calling NVIDIA LLM for refinement');
-  const result = await callNvidiaLLM(prompt, input.apiKey, input.model, 2048, 0.2);
+  safeHeartbeat('Calling NVIDIA LLM for refinement');
+  const result = await callNvidiaLLM(systemPrompt, userContent, input.apiKey, input.model, 2048, 0.2);
 
   const cleaned = result
     .replace(/^```[\w]*\n?/m, '')

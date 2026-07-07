@@ -9,8 +9,51 @@ import { NextResponse } from 'next/server';
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   const t0 = Date.now();
+  const url = new URL(request.url);
+  const mode = url.searchParams.get('mode') || 'full';
+
+  // Smoke test: return immediately, no external calls.
+  // Use /api/debug?mode=ping to verify the route + runtime is healthy.
+  if (mode === 'ping') {
+    return NextResponse.json({
+      ok: true,
+      mode: 'ping',
+      msg: 'route alive, no external calls made',
+      totalMs: Date.now() - t0,
+      region: process.env.VERCEL_REGION || 'unknown',
+      vercelEnv: process.env.VERCEL_ENV || 'unknown',
+      hasKey: !!process.env.NVIDIA_API_KEY,
+      keyPrefix: process.env.NVIDIA_API_KEY
+        ? process.env.NVIDIA_API_KEY.slice(0, 10) + '...'
+        : '(none)',
+    });
+  }
+
+  // Smoke test: hit a non-NVIDIA external API to verify outbound HTTPS works.
+  // Use /api/debug?mode=external to test general outbound connectivity.
+  if (mode === 'external') {
+    try {
+      const r = await fetch('https://httpbin.org/get', { method: 'GET' });
+      const body = await r.text();
+      return NextResponse.json({
+        ok: r.ok,
+        mode: 'external',
+        status: r.status,
+        ms: Date.now() - t0,
+        bodyPreview: body.slice(0, 300),
+      });
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        mode: 'external',
+        error: `${(e as Error).name}: ${(e as Error).message}`,
+        ms: Date.now() - t0,
+      });
+    }
+  }
+
   const apiKey = process.env.NVIDIA_API_KEY;
 
   if (!apiKey) {

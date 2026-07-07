@@ -18,12 +18,6 @@ Answer:
 
 Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.
 
-## Compress to keywords:
-
-The economy is struggling due to inflation
-
-economy, inflation, struggling
-
 ## Write sentence from Telegraphic speech idea:
 
 A man apple hungry eats 
@@ -39,6 +33,12 @@ The team needs to finish the report, schedule a meeting, and send invoices by Fr
 - Finish the report  
 - Schedule a meeting  
 - Send invoices by Friday
+
+## Compress to keywords:
+
+The economy is struggling due to inflation
+
+economy, inflation, struggling
 
 ## Write a telegraphic speech about: 
 

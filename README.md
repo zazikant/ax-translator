@@ -1,3 +1,20 @@
+## Compress to keywords:
+
+The economy is struggling due to inflation
+
+economy, inflation, struggling
+
+## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens.
+
+
+Write a telegraphic speech based on the idea:
+
+couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles
+
+Answer:
+
+Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.
+
 ## Write a telegraphic speech based on the idea:
 
 scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward
@@ -15,17 +32,6 @@ Answer:
 A hungry man eats an apple.
 
 
-## Use tag-based prompts only. No grammar, no connectives, just core visual/semantic tokens.
-
-
-Write a telegraphic speech based on the idea:
-
-couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles
-
-Answer:
-
-Couple in glasses, winter coats, selfie amid snow‑capped mountains, alpine valley, chalets under blue sky, clouds, snowfall, warm smiles.
-
 ## Write a telegraphic speech about: 
 
 Climate change
@@ -41,13 +47,6 @@ Future of humanity hangs in the balance.
 Man going to restaurant
 
 Man: starving. Enters restaurant. Waiter: menu. Man: eyes menu, brain: “food?” Orders steak, medium‑rare. Waiter: “how you want it?” Man: “like my ex—well done.” Plate arrives. Man: “is this a joke?” Fork: “no, it’s me.” Soup: “I’m too hot for this.” Bill arrives. Man: “pay with jokes?” Cashier: “only laughs accepted.” Man leaves, satisfied, stomach full, ego slightly bruised.
-
-
-## Compress to keywords:
-
-The economy is struggling due to inflation
-
-economy, inflation, struggling
 
 ## Extract only action items:
 

@@ -1106,11 +1106,11 @@ export default function AxTranslatorPage() {
                   "if you don't have a scene, use a \"seed thought\" and generate a prompt with the \"Telegraphic Speech: Compression and exploration\" node.",
                   "Split an 8‑word scene into two batches of four words each.",
                   "Process each batch with a \"four‑word max\" seed thought to generate telegraphic speech using \"Telegraphic Speech: Compression and exploration\" node",
-                  "Concatenate the two telegraphic outputs and feed them into the tag‑based prompt creation node.",
-                  "Use the \"sentence from telegraphic speech tag\" node to combine the tags into a final sentence.",
-                  "Pass that sentence to the \"structured, photo composition brief\" node.",
-                  "Extract only the \"objective and narrative\" fields from that node and send them to the \"subject and background\" node.",
-                  "first generate a general final image, then apply the \"style\" fingerprint prompt. If that isn't satisfactory, try generating the final image together with the style prompt concatenated.",
+                  "Concatenate the two telegraphic outputs and feed them into \"Tag-Based Prompts\" node",
+                  "Use the \"Sentence from Telegraphic Speech\" node to combine the tags into a final sentence.",
+                  "Pass that sentence to the \"Convert telegraphic notes into a structured, photo composition brief\" node.",
+                  "Extract only the \"objective and narrative\" fields from that node and send them to the \"Photo composition brief — Subject and Background\" node.",
+                  "first generate a general final image, then apply the \"style\" fingerprint prompt from \"Steal Art Style Fingerprint\" node. If that isn't satisfactory, try generating the final image together with the style prompt concatenated.",
                 ].map((note, index) => (
                   <div key={index} className="border rounded-lg p-3 text-sm bg-muted/50">
                     {note}

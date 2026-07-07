@@ -31,12 +31,6 @@ Answer:
 
 A hungry man eats an apple.
 
-## Write a comedy telegraphic speech about:
-
-Man going to restaurant
-
-Man: starving. Enters restaurant. Waiter: menu. Man: eyes menu, brain: “food?” Orders steak, medium‑rare. Waiter: “how you want it?” Man: “like my ex—well done.” Plate arrives. Man: “is this a joke?” Fork: “no, it’s me.” Soup: “I’m too hot for this.” Bill arrives. Man: “pay with jokes?” Cashier: “only laughs accepted.” Man leaves, satisfied, stomach full, ego slightly bruised.
-
 ## Extract only action items:
 
 The team needs to finish the report, schedule a meeting, and send invoices by Friday
@@ -54,6 +48,12 @@ CO₂ emissions soaring; fossil fuels dominate; oceans acidify.
 Deforestation accelerates; biodiversity collapses; sea levels climb.  
 Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies.  
 Future of humanity hangs in the balance.
+
+## Write a comedy telegraphic speech about:
+
+Man going to restaurant
+
+Man: starving. Enters restaurant. Waiter: menu. Man: eyes menu, brain: “food?” Orders steak, medium‑rare. Waiter: “how you want it?” Man: “like my ex—well done.” Plate arrives. Man: “is this a joke?” Fork: “no, it’s me.” Soup: “I’m too hot for this.” Bill arrives. Man: “pay with jokes?” Cashier: “only laughs accepted.” Man leaves, satisfied, stomach full, ego slightly bruised.
 
 # Ax Translator — DSPy-like Translation Pipeline
 

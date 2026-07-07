@@ -1,3 +1,19 @@
+## Write a telegraphic speech based on the idea:
+
+scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward
+
+Answer:
+
+Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.
+
+## Write sentence from Telegraphic speech idea:
+
+A man apple hungry eats 
+
+Answer:
+
+A hungry man eats an apple.
+
 # Ax Translator — DSPy-like Translation Pipeline
 
 Translate text into clean, understandable language using a DSPy-inspired pipeline powered by NVIDIA GPT-OSS 120B.

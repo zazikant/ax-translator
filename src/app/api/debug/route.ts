@@ -56,6 +56,133 @@ export async function GET(request: Request) {
 
   const apiKey = process.env.NVIDIA_API_KEY;
 
+  // Test ONLY the cheap /v1/models GET. If this hangs, the issue is
+  // network-level (DNS / TCP / TLS) between Vercel and NVIDIA.
+  if (mode === 'models') {
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: 'no key' }, { status: 500 });
+    }
+    try {
+      const r = await fetch('https://integrate.api.nvidia.com/v1/models', {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      const body = await r.text();
+      return NextResponse.json({
+        ok: r.ok,
+        mode: 'models',
+        status: r.status,
+        ms: Date.now() - t0,
+        bodyPreview: body.slice(0, 300),
+      });
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        mode: 'models',
+        error: `${(e as Error).name}: ${(e as Error).message}`,
+        ms: Date.now() - t0,
+      });
+    }
+  }
+
+  // Test ONLY a tiny chat completion, no streaming.
+  if (mode === 'chat-nostream') {
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: 'no key' }, { status: 500 });
+    }
+    try {
+      const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          messages: [{ role: 'user', content: 'Reply with: pong' }],
+          max_tokens: 16,
+          temperature: 0,
+          stream: false,
+        }),
+      });
+      const body = await r.text();
+      return NextResponse.json({
+        ok: r.ok,
+        mode: 'chat-nostream',
+        status: r.status,
+        ms: Date.now() - t0,
+        bodyPreview: body.slice(0, 400),
+      });
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        mode: 'chat-nostream',
+        error: `${(e as Error).name}: ${(e as Error).message}`,
+        ms: Date.now() - t0,
+      });
+    }
+  }
+
+  // Test ONLY a tiny chat completion, WITH streaming.
+  if (mode === 'chat-stream') {
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: 'no key' }, { status: 500 });
+    }
+    try {
+      const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          messages: [{ role: 'user', content: 'Reply with: pong' }],
+          max_tokens: 16,
+          temperature: 0,
+          stream: true,
+        }),
+      });
+      if (!r.ok) {
+        const body = await r.text();
+        return NextResponse.json({
+          ok: false,
+          mode: 'chat-stream',
+          status: r.status,
+          ms: Date.now() - t0,
+          bodyPreview: body.slice(0, 400),
+        });
+      }
+      // Drain the stream
+      const reader = r.body!.getReader();
+      let chunks = 0;
+      let bytes = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks++;
+        bytes += value?.length || 0;
+      }
+      return NextResponse.json({
+        ok: true,
+        mode: 'chat-stream',
+        status: r.status,
+        ms: Date.now() - t0,
+        chunks,
+        bytes,
+      });
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        mode: 'chat-stream',
+        error: `${(e as Error).name}: ${(e as Error).message}`,
+        ms: Date.now() - t0,
+      });
+    }
+  }
+
+
   if (!apiKey) {
     return NextResponse.json(
       {

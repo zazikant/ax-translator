@@ -21,9 +21,9 @@ const DEFAULT_MODEL = 'openai/gpt-oss-120b';
 // Per-call timeout: 120s. Matches google-ads-subagent-vercel/lib/models.ts.
 // gpt-oss-120b on Vercel Edge can take 8-15s TTFB for larger outputs
 // (longer translations, especially with high max_tokens), and the 18s
-// budget was tight. 120s gives the model comfortable room and is
-// supported on Vercel Pro Edge (300s maxDuration) — Hobby still caps at
-// 30s, so this build targets Pro.
+// budget was tight. 120s is the client-side ceiling; on Hobby Vercel
+// kills the function at 30s first, so the effective budget stays 30s.
+// On Pro (300s Edge cap) this gives the model comfortable room.
 //
 // 1 retry with 500ms backoff. Pipeline-level retry (in page.tsx for
 // chunked mode) handles additional attempts.

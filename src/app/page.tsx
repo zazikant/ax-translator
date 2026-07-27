@@ -47,6 +47,7 @@ import {
   Download,
   ChevronDown,
 } from 'lucide-react';
+import { PinLock } from '@/components/PinLock';
 
 // ─── Language Options ────────────────────────────────────────────────────────
 
@@ -447,6 +448,14 @@ function estimateTokens(text: string): number {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function AxTranslatorPage() {
+  // PIN lock state — app is hidden until unlocked
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const handleUnlock = useCallback(() => setIsUnlocked(true), []);
+
+  if (!isUnlocked) {
+    return <PinLock onUnlock={handleUnlock} />;
+  }
+
   // NVIDIA API key is no longer collected from the user. It is read from the
   // NVIDIA_API_KEY environment variable on the server (e.g. configured in
   // Vercel project settings) — see src/app/api/translate/route.ts.

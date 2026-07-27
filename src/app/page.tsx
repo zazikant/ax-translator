@@ -450,11 +450,6 @@ function estimateTokens(text: string): number {
 export default function AxTranslatorPage() {
   // PIN lock state — app is hidden until unlocked
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const handleUnlock = useCallback(() => setIsUnlocked(true), []);
-
-  if (!isUnlocked) {
-    return <PinLock onUnlock={handleUnlock} />;
-  }
 
   // NVIDIA API key is no longer collected from the user. It is read from the
   // NVIDIA_API_KEY environment variable on the server (e.g. configured in
@@ -945,6 +940,14 @@ export default function AxTranslatorPage() {
 
   const outputChars = result?.translatedText.length ?? 0;
   const outputTokens = result ? estimateTokens(result.translatedText) : 0;
+
+  // PIN lock handler (must be declared after all other hooks above)
+  const handleUnlock = useCallback(() => setIsUnlocked(true), []);
+
+  // Show PIN lock screen if not yet unlocked
+  if (!isUnlocked) {
+    return <PinLock onUnlock={handleUnlock} />;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

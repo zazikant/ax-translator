@@ -221,7 +221,7 @@ export async function GET(request: Request) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
+          model: 'openai/gpt-oss-20b',
           messages: [{ role: 'user', content: 'Reply with: pong' }],
           max_tokens: 1024,
           temperature: 0,
@@ -288,7 +288,7 @@ export async function GET(request: Request) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
+          model: 'openai/gpt-oss-20b',
           messages: [{ role: 'user', content: 'Reply with: pong' }],
           max_tokens: 16,
           temperature: 0,
@@ -326,7 +326,7 @@ export async function GET(request: Request) {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
+          model: 'openai/gpt-oss-20b',
           messages: [{ role: 'user', content: 'Reply with: pong' }],
           max_tokens: 16,
           temperature: 0,
@@ -418,7 +418,7 @@ export async function GET(request: Request) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
+        model: 'openai/gpt-oss-20b',
         messages: [{ role: 'user', content: 'Reply with the single word: pong' }],
         max_tokens: 16,
         temperature: 0,

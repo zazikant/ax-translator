@@ -16,7 +16,7 @@
  */
 
 const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
-const DEFAULT_MODEL = 'openai/gpt-oss-120b';
+const DEFAULT_MODEL = 'openai/gpt-oss-20b';
 
 // Per-call timeout: 120s. Matches google-ads-subagent-vercel/lib/models.ts.
 // gpt-oss-120b on Vercel Edge can take 8-15s TTFB for larger outputs

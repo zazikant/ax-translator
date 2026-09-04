@@ -75,7 +75,7 @@ export interface RefineOutput {
 // ─── NVIDIA API Client ───────────────────────────────────────────────────────
 
 const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
-const DEFAULT_MODEL = 'openai/gpt-oss-120b';
+const DEFAULT_MODEL = 'openai/gpt-oss-20b';
 
 async function callNvidiaLLM(
   systemPrompt: string,

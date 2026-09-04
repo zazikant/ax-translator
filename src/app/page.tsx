@@ -792,7 +792,7 @@ export default function AxTranslatorPage() {
           qualityScore: succeededChunks > 0 ? Math.round(totalQuality / succeededChunks) : 0,
           attempts: totalAttempts,
           refinements: totalRefinements,
-          model: 'openai/gpt-oss-120b',
+          model: 'openai/gpt-oss-20b',
           pipeline: [`chunked-${chunks.length}-${succeededChunks}ok`],
         };
         setResult(combinedResult);

@@ -615,26 +615,27 @@ export default function AxTranslatorPage() {
       // Per-chunk pipeline-level retry (3 attempts) for resilience.
       if (isLargeInput) {
         setCurrentStage('chunking');
-        const chunks = splitIntoChunks(inputText, 3000); // ~3K tokens per chunk for better quality
+        // ~6K tokens per chunk. Nemotron-3-Ultra has a 128K context window,
+        // so 6K input + ~9K output (1.5×) + reasoning overhead fits
+        // comfortably in a single 30s Vercel Edge call. Larger chunks
+        // mean fewer requests, fewer cooldowns, and faster end-to-end.
+        const CHUNK_SIZE_TOKENS = 6000;
+        const chunks = splitIntoChunks(inputText, CHUNK_SIZE_TOKENS);
         setChunkProgress({ done: 0, total: chunks.length });
 
         // Live log: announce chunking
         setLiveEvents((prev) => [...prev, {
           ts: Date.now(),
           type: 'log',
-          line: `[pipeline] Large input: ${chunks.length} chunks × ~3K tokens each. Streaming each chunk through /api/translate-stream.`,
+          line: `[pipeline] Large input: ${chunks.length} chunk(s) × ~${CHUNK_SIZE_TOKENS} tokens each. Each chunk streams through /api/translate-stream (30s Edge budget per chunk).`,
         }]);
 
-        // Warn about Vercel Edge 30s cap for multi-chunk inputs.
-        // Each chunk takes ~5-10s + 10-60s inter-chunk cooldown.
-        // 2 chunks: ~25s (fits). 3+ chunks: ~50s+ (will be killed).
-        if (chunks.length >= 3) {
-          setLiveEvents((prev) => [...prev, {
-            ts: Date.now(),
-            type: 'log',
-            line: `[pipeline] ⚠️ ${chunks.length} chunks with inter-chunk cooldowns may exceed Vercel's 30s function cap. Consider splitting into smaller inputs, or use a non-Vercel host for large documents.`,
-          }]);
-        }
+        // Each chunk is its own HTTP request, so the Vercel Edge 30s cap
+        // applies PER CHUNK, not to the whole pipeline. The client-side
+        // loop + cooldowns run in the browser, which has no such cap.
+        // For very long inputs (e.g. 50+ pages → 10+ chunks), this means
+        // the user just needs to keep the tab open — the pipeline will
+        // keep making progress, one chunk at a time.
 
         const translatedChunks: string[] = [];
         let totalQuality = 0;
@@ -728,23 +729,24 @@ export default function AxTranslatorPage() {
           // Wait before starting the next chunk so NVIDIA's rate-limit
           // window has time to reset. Adaptive based on how the previous
           // chunk went:
-          //   - Succeeded on first attempt: 10s (quick breather)
-          //   - Succeeded after retries:    30s (something was flaky)
-          //   - Failed all attempts:        60s (rate limit likely)
-          // Capped at 60s as requested.
+          //   - Succeeded on first attempt:  3s (Nemotron-3-Ultra handles
+          //                                  burst traffic well; brief breather)
+          //   - Succeeded after retries:   10s (something was flaky)
+          //   - Failed all attempts:       30s (rate limit likely)
+          // Capped at 30s.
           //
-          // Note: On Vercel Edge (30s function cap), the 60s delay will
-          // get killed. The live log will show the countdown progress
-          // up to the kill point. For long delays, use a non-Vercel host.
+          // Note: cooldowns run CLIENT-SIDE (browser setTimeout), so the
+          // Vercel Edge 30s per-request cap does NOT apply. Each chunk is
+          // its own HTTP request with its own 30s budget.
           if (i < chunks.length - 1) {
             const isRateLimitError = /rate.?limit|429|too many requests/i.test(lastChunkError);
-            let delaySec = 10;
+            let delaySec = 3;
             if (chunkResult === null) {
-              delaySec = isRateLimitError ? 60 : 30;
+              delaySec = isRateLimitError ? 30 : 10;
             } else if (chunkResult.attempts > 1) {
-              delaySec = 30;
+              delaySec = 10;
             }
-            delaySec = Math.min(delaySec, 60);
+            delaySec = Math.min(delaySec, 30);
 
             setLiveEvents((prev) => [...prev, {
               ts: Date.now(),

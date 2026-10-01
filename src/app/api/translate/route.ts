@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Edge runtime — Vercel's Node serverless path hangs on openai/gpt-oss-120b
+// Edge runtime — Vercel's Node serverless path hangs on nvidia/nemotron-3-ultra-550b-a55b
 // (confirmed via /api/debug). Edge uses a different egress that works.
-// See /api/debug?mode=chat-oss-big for the smoking gun.
+// See /api/debug?mode=chat-nemotron-ultra for the smoking gun.
 export const maxDuration = 30;
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';

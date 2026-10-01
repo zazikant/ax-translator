@@ -246,6 +246,48 @@ export async function GET(request: Request) {
     }
   }
 
+  // Test nvidia/nemotron-3-ultra-550b-a55b — the production default.
+  // Sends reasoning_effort:'low' (Nemotron-3 requirement) and reads back
+  // both content and reasoning_content so we can verify the model emits
+  // both channels properly.
+  if (mode === 'chat-nemotron-ultra') {
+    if (!apiKey) {
+      return NextResponse.json({ ok: false, error: 'no key' }, { status: 500 });
+    }
+    try {
+      const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'nvidia/nemotron-3-ultra-550b-a55b',
+          messages: [{ role: 'user', content: 'Reply with: pong' }],
+          max_tokens: 1024,
+          temperature: 0,
+          reasoning_effort: 'low',
+          stream: false,
+        }),
+      });
+      const body = await r.text();
+      return NextResponse.json({
+        ok: r.ok,
+        mode: 'chat-nemotron-ultra',
+        status: r.status,
+        ms: Date.now() - t0,
+        bodyPreview: body.slice(0, 600),
+      });
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        mode: 'chat-nemotron-ultra',
+        error: `${(e as Error).name}: ${(e as Error).message}`,
+        ms: Date.now() - t0,
+      });
+    }
+  }
+
   // Test ONLY the cheap /v1/models GET. If this hangs, the issue is
   // network-level (DNS / TCP / TLS) between Vercel and NVIDIA.
   if (mode === 'models') {
@@ -404,7 +446,10 @@ export async function GET(request: Request) {
     modelsBody = `${(e as Error).name}: ${(e as Error).message}`;
   }
 
-  // 2) Tiny chat completion to verify the actual endpoint works (streaming)
+  // 2) Tiny chat completion to verify the actual endpoint works (streaming).
+  //    Uses nvidia/nemotron-3-ultra-550b-a55b — the production default —
+  //    with reasoning_effort:'low'. This is the smallest possible real call
+  //    that exercises the same code path the translate endpoints hit.
   let chatOk = false;
   let chatStatus = 0;
   let chatBody = '';
@@ -418,10 +463,11 @@ export async function GET(request: Request) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: 'openai/gpt-oss-20b',
+        model: 'nvidia/nemotron-3-ultra-550b-a55b',
         messages: [{ role: 'user', content: 'Reply with the single word: pong' }],
         max_tokens: 16,
         temperature: 0,
+        reasoning_effort: 'low',
         stream: true,
       }),
     });

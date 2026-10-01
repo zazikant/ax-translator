@@ -2,24 +2,37 @@
  * NVIDIA API Client — streaming edition with controlled, logged calls.
  *
  * Each call to callNvidiaLLM:
- *   - Streams the response (chunk-by-chunk) from gpt-oss-120b
+ *   - Streams the response (chunk-by-chunk) from nvidia/nemotron-3-ultra-550b-a55b
  *   - Has a hard per-call timeout (DEFAULT_CALL_TIMEOUT_MS)
- *   - Retries once with backoff on transient failures
+ *   - Retries once with backoff on transient failures (429 / 5xx / network resets)
+ *   - Sends `reasoning_effort: 'low'` because Nemotron-3 models expose a
+ *     reasoning channel; low effort keeps TTFB fast while still emitting
+ *     a small reasoning_content trail we can inspect for debugging.
  *   - Emits structured log lines so the pipeline can show progress:
- *       [nvidia] start  model=openai/gpt-oss-120b max_tokens=2048 temp=0.3
+ *       [nvidia] start  model=nvidia/nemotron-3-ultra-550b-a55b max_tokens=2048 temp=0.3
  *       [nvidia] ttfb=523ms first_content="..."
  *       [nvidia] done   elapsed=1234ms content_chars=987 reasoning_chars=4321
  *       [nvidia] retry  attempt=2 reason="AbortError"
  *
  * Base URL: https://integrate.api.nvidia.com/v1
- * Default model: openai/gpt-oss-120b
+ * Default model: nvidia/nemotron-3-ultra-550b-a55b
+ *
+ * Retry policy (ported from tradingview-notes-app-nvidia/src/lib/brain/nvidia.ts):
+ *   - Retryable HTTP statuses: 429, 500, 502, 503, 504
+ *   - Retryable error codes: ECONNRESET, ETIMEDOUT, UND_ERR_CONNECT_TIMEOUT
+ *   - Retryable error class names: APIConnectionError, APITimeoutError, ConnectionError
+ *   - Non-retryable errors (4xx other than 429) surface immediately
  */
 
 const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
-const DEFAULT_MODEL = 'openai/gpt-oss-20b';
+
+// Default model: NVIDIA Nemotron-3 Ultra 550B (55B active params via MoE).
+// This is the heavy, high-quality sibling of nvidia/nemotron-3-super-120b-a12b
+// — better for translation workloads where nuance and terminology matter.
+const DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b';
 
 // Per-call timeout: 120s. Matches google-ads-subagent-vercel/lib/models.ts.
-// gpt-oss-120b on Vercel Edge can take 8-15s TTFB for larger outputs
+// Nemotron-3-Ultra on Vercel Edge can take 8-15s TTFB for larger outputs
 // (longer translations, especially with high max_tokens), and the 18s
 // budget was tight. 120s is the client-side ceiling; on Hobby Vercel
 // kills the function at 30s first, so the effective budget stays 30s.
@@ -29,6 +42,11 @@ const DEFAULT_MODEL = 'openai/gpt-oss-20b';
 // chunked mode) handles additional attempts.
 export const DEFAULT_CALL_TIMEOUT_MS = 120_000;
 export const DEFAULT_MAX_RETRIES = 1;
+
+// Nemotron-3 models expose a reasoning channel. 'low' keeps the model fast
+// while still surfacing a short chain-of-thought in `reasoning_content` for
+// debugging. We never stream reasoning to the user — only finished `content`.
+const DEFAULT_REASONING_EFFORT = 'low' as const;
 
 export interface NvidiaChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -41,7 +59,7 @@ export interface NvidiaCallOptions {
   temperature?: number;
   maxTokens?: number;
   apiKey: string;
-  /** Per-call timeout in ms. Default 10000. */
+  /** Per-call timeout in ms. Default 120000. */
   timeoutMs?: number;
   /** Max attempts (including the first). Default 2 (1 retry). */
   maxRetries?: number;
@@ -59,6 +77,22 @@ export interface NvidiaCallResult {
   attempts: number;
 }
 
+/**
+ * Determines if an error is retryable (timeout, rate limit, or server error).
+ * Ported verbatim from tradingview-notes-app-nvidia/src/lib/brain/nvidia.ts
+ * so Nemotron-3 calls recover from the same transient failure modes.
+ */
+export function isRetryableError(err: any): boolean {
+  const status = err?.status || err?.statusCode || 0;
+  if ([429, 500, 502, 503, 504].includes(status)) return true;
+  if (['ECONNRESET', 'ETIMEDOUT', 'UND_ERR_CONNECT_TIMEOUT'].includes(err?.code)) return true;
+  const errName: string = err?.constructor?.name || '';
+  if (['APIConnectionError', 'APITimeoutError', 'ConnectionError'].includes(errName)) return true;
+  const msg: string = (err?.message || '').toLowerCase();
+  if (msg.includes('timeout') || msg.includes('rate limit') || msg.includes('too many requests') || msg.includes('econnreset')) return true;
+  return false;
+}
+
 function log(opts: NvidiaCallOptions, msg: string) {
   const line = `[nvidia] ${msg}`;
   console.log(line);
@@ -67,7 +101,8 @@ function log(opts: NvidiaCallOptions, msg: string) {
 
 /**
  * Internal: stream + accumulate a single chat completion attempt.
- * Throws on timeout or HTTP error.
+ * Throws on timeout or HTTP error. The thrown error carries `.status`
+ * so the caller's retry loop can decide retryability via isRetryableError.
  */
 async function streamOnce(
   body: Record<string, unknown>,
@@ -89,7 +124,11 @@ async function streamOnce(
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`NVIDIA API error (${response.status}): ${errText.slice(0, 300)}`);
+    const err: any = new Error(
+      `NVIDIA API error (${response.status}): ${errText.slice(0, 300)}`,
+    );
+    err.status = response.status;
+    throw err;
   }
   if (!response.body) {
     throw new Error('NVIDIA API returned no response body');
@@ -115,6 +154,15 @@ async function streamOnce(
       if (!line || !line.startsWith('data:')) continue;
       const data = line.slice(5).trim();
       if (data === '[DONE]') {
+        // Nemotron-3 occasionally spends its entire token budget on
+        // reasoning_content when max_tokens is too small. Fall back to
+        // reasoning so the user still sees a result instead of an empty
+        // string. The real fix is a large enough max_tokens (handled by
+        // calculateMaxTokens in translation-pipeline.ts).
+        if (!content && reasoning) {
+          content = reasoning;
+          onChunk?.(content);
+        }
         return { content, reasoning, ttfbMs };
       }
       try {
@@ -125,6 +173,9 @@ async function streamOnce(
             content += delta.content;
             onChunk?.(delta.content);
           }
+          // Accumulate reasoning_content but do NOT stream it to the user.
+          // It's the model's internal scratchpad (chain-of-thought,
+          // self-debate, uncertainty hedging) — never user-facing.
           if (typeof delta.reasoning_content === 'string') {
             reasoning += delta.reasoning_content;
           }
@@ -134,12 +185,25 @@ async function streamOnce(
       }
     }
   }
+  // Stream ended without an explicit [DONE]. Apply the same reasoning
+  // fallback in case the model finished on a reasoning-only flush.
+  if (!content && reasoning) {
+    content = reasoning;
+    onChunk?.(content);
+  }
   return { content, reasoning, ttfbMs };
 }
 
 /**
  * Controlled, logged, time-bounded chat completion with retry.
  * Returns the full content + reasoning + timing metadata.
+ *
+ * Retry behavior:
+ *   - If the thrown error is retryable (see isRetryableError), we back off
+ *     (500ms × attempt) and try again up to maxRetries times.
+ *   - If the error is non-retryable (4xx other than 429, malformed request,
+ *     auth failures, etc.) we surface immediately so the UI can show a
+ *     real error instead of silently retrying a doomed call.
  */
 export async function nvidiaChatCompletion(
   opts: NvidiaCallOptions,
@@ -166,6 +230,10 @@ export async function nvidiaChatCompletion(
           messages: opts.messages,
           max_tokens: opts.maxTokens ?? 2048,
           temperature: opts.temperature ?? 0.7,
+          // Nemotron-3 models accept reasoning_effort. 'low' keeps TTFB
+          // fast (~4s) while still producing a small reasoning trail we
+          // can inspect for debugging. Other models ignore this param.
+          reasoning_effort: DEFAULT_REASONING_EFFORT,
         },
         opts.apiKey,
         controller.signal,
@@ -193,10 +261,15 @@ export async function nvidiaChatCompletion(
       } else {
         log(opts, `ERROR attempt=${attempt} after ${elapsed}ms: ${e.name}: ${e.message.slice(0, 200)}`);
       }
-      if (attempt < maxRetries) {
-        const backoff = 500 * attempt;
+      // Decide whether to retry. Non-retryable errors surface immediately.
+      const retryable = isRetryableError(e);
+      if (attempt < maxRetries && retryable) {
+        const backoff = 500 * attempt; // 500ms, 1000ms, 1500ms, ...
         log(opts, `retry  backing off ${backoff}ms before attempt ${attempt + 1}`);
         await new Promise((r) => setTimeout(r, backoff));
+      } else if (!retryable) {
+        // Non-retryable — surface immediately so the UI shows a real error.
+        throw e;
       }
     }
   }
@@ -209,7 +282,7 @@ export async function nvidiaChatCompletion(
 
 /**
  * Convenience: system + user prompt → content string.
- * Default model is gpt-oss-120b, 10s timeout, 1 retry.
+ * Default model is nvidia/nemotron-3-ultra-550b-a55b, 120s timeout, 1 retry.
  */
 export async function callNvidiaLLM(
   systemPrompt: string,

@@ -792,7 +792,7 @@ export default function AxTranslatorPage() {
           qualityScore: succeededChunks > 0 ? Math.round(totalQuality / succeededChunks) : 0,
           attempts: totalAttempts,
           refinements: totalRefinements,
-          model: 'openai/gpt-oss-20b',
+          model: 'nvidia/nemotron-3-ultra-550b-a55b',
           pipeline: [`chunked-${chunks.length}-${succeededChunks}ok`],
         };
         setResult(combinedResult);
@@ -1149,11 +1149,11 @@ export default function AxTranslatorPage() {
                           <p className="text-sm font-medium">
                             {chunkProgress
                               ? `${STAGE_LABELS[currentStage]} — Chunk ${chunkProgress.done + 1} of ${chunkProgress.total}`
-                              : STAGE_LABELS[currentStage] || 'Calling NVIDIA gpt-oss-120b...'}
+                              : STAGE_LABELS[currentStage] || 'Calling NVIDIA Nemotron-3 Ultra...'}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {currentStage === 'chunking' && 'Splitting text into manageable chunks...'}
-                            {currentStage === 'translate' && 'Streaming tokens from NVIDIA gpt-oss-120b...'}
+                            {currentStage === 'translate' && 'Streaming tokens from NVIDIA Nemotron-3 Ultra...'}
                             {currentStage === 'validate' && 'Validating translation quality...'}
                             {currentStage === 'refine' && 'Refining translation...'}
                           </p>

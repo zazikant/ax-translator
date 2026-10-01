@@ -62,7 +62,7 @@ Man: starving. Enters restaurant. Waiter: menu. Man: eyes menu, brain: “food?�
 
 # Ax Translator — DSPy-like Translation Pipeline
 
-Translate text into clean, understandable language using a DSPy-inspired pipeline powered by NVIDIA GPT-OSS 120B.
+Translate text into clean, understandable language using a DSPy-inspired pipeline powered by NVIDIA Nemotron-3 Ultra 550B.
 
 ## Features
 
@@ -77,7 +77,7 @@ Translate text into clean, understandable language using a DSPy-inspired pipelin
 
 - **Frontend**: Next.js 16, React 19, shadcn/ui, Tailwind CSS
 - **Backend**: Next.js API Routes with embedded pipeline
-- **LLM**: NVIDIA GPT-OSS 120B via `integrate.api.nvidia.com`
+- **LLM**: NVIDIA Nemotron-3 Ultra 550B (`nvidia/nemotron-3-ultra-550b-a55b`) via `integrate.api.nvidia.com`
 
 ## Getting Started
 
@@ -123,7 +123,7 @@ NVIDIA_API_KEY=nvapi-xxxxx
 ## How the Pipeline Works
 
 ### Stage 1: Translate
-NVIDIA GPT-OSS 120B translates your text with a carefully compiled system prompt that preserves meaning and tone.
+NVIDIA Nemotron-3 Ultra 550B translates your text with a carefully compiled system prompt that preserves meaning and tone. The model is called with `reasoning_effort: 'low'` so time-to-first-token stays fast (~4s) while still emitting a small reasoning trail the pipeline uses for diagnostics.
 
 ### Stage 2: Validate
 A separate LLM call evaluates accuracy, fluency, completeness, and terminology. Returns a quality score (0-100) and list of issues.

@@ -35,7 +35,7 @@ export type PipelineEvent =
 export type EmitFn = (event: PipelineEvent) => void;
 
 /**
- * Streaming fast translation: a single controlled NVIDIA call to gpt-oss-120b.
+ * Streaming fast translation: a single controlled NVIDIA call to nvidia/nemotron-3-ultra-550b-a55b.
  * Emits stage-start → chunks → stage-end → pipeline-end.
  */
 export async function runFastTranslationStream(

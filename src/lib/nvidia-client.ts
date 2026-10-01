@@ -67,6 +67,15 @@ export interface NvidiaCallOptions {
   onLog?: (line: string) => void;
   /** Optional callback fired for every content chunk as it arrives. */
   onChunk?: (text: string) => void;
+  /**
+   * Max auto-continue rounds when the model returns finish_reason === 'length'.
+   * Each round re-calls the model with the partial output appended as an
+   * assistant message, asking it to continue. Default 3.
+   *
+   * Set to 0 to disable continuation (older behavior — output truncates
+   * at max_tokens with no auto-resume).
+   */
+  maxContinuations?: number;
 }
 
 export interface NvidiaCallResult {
@@ -75,6 +84,10 @@ export interface NvidiaCallResult {
   model: string;
   elapsedMs: number;
   attempts: number;
+  /** Number of continuation rounds that were triggered (0 if the model finished in one call). */
+  continuations: number;
+  /** True if the model exhausted all continuations and is STILL truncated. */
+  truncated: boolean;
 }
 
 /**
@@ -99,6 +112,22 @@ function log(opts: NvidiaCallOptions, msg: string) {
   opts.onLog?.(line);
 }
 
+interface StreamOnceResult {
+  content: string;
+  reasoning: string;
+  ttfbMs: number | null;
+  /**
+   * finish_reason from the model:
+   *   'stop'       — model finished naturally (clean stop)
+   *   'length'     — model hit max_tokens mid-generation (output truncated)
+   *   'content_filter' / 'tool_calls' / undefined — other terminal states
+   *
+   * We use 'length' to trigger an auto-continue call so the user sees the
+   * full output instead of a truncated response.
+   */
+  finishReason: string | null;
+}
+
 /**
  * Internal: stream + accumulate a single chat completion attempt.
  * Throws on timeout or HTTP error. The thrown error carries `.status`
@@ -109,7 +138,7 @@ async function streamOnce(
   apiKey: string,
   signal: AbortSignal,
   onChunk?: (text: string) => void,
-): Promise<{ content: string; reasoning: string; ttfbMs: number | null }> {
+): Promise<StreamOnceResult> {
   const callStart = Date.now();
   const response = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
     method: 'POST',
@@ -140,6 +169,7 @@ async function streamOnce(
   let content = '';
   let reasoning = '';
   let ttfbMs: number | null = null;
+  let finishReason: string | null = null;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -163,11 +193,12 @@ async function streamOnce(
           content = reasoning;
           onChunk?.(content);
         }
-        return { content, reasoning, ttfbMs };
+        return { content, reasoning, ttfbMs, finishReason };
       }
       try {
         const json = JSON.parse(data);
-        const delta = json.choices?.[0]?.delta;
+        const choice = json.choices?.[0];
+        const delta = choice?.delta;
         if (delta) {
           if (typeof delta.content === 'string' && delta.content) {
             content += delta.content;
@@ -180,6 +211,12 @@ async function streamOnce(
             reasoning += delta.reasoning_content;
           }
         }
+        // Capture finish_reason as soon as it appears. NVIDIA's SSE stream
+        // emits it on the final chunk BEFORE [DONE]. We need it to decide
+        // whether to auto-continue (see nvidiaChatCompletion below).
+        if (choice && typeof choice.finish_reason === 'string' && choice.finish_reason) {
+          finishReason = choice.finish_reason;
+        }
       } catch {
         // Partial JSON across chunks — wait for more bytes.
       }
@@ -191,11 +228,11 @@ async function streamOnce(
     content = reasoning;
     onChunk?.(content);
   }
-  return { content, reasoning, ttfbMs };
+  return { content, reasoning, ttfbMs, finishReason };
 }
 
 /**
- * Controlled, logged, time-bounded chat completion with retry.
+ * Controlled, logged, time-bounded chat completion with retry + auto-continue.
  * Returns the full content + reasoning + timing metadata.
  *
  * Retry behavior:
@@ -204,80 +241,175 @@ async function streamOnce(
  *   - If the error is non-retryable (4xx other than 429, malformed request,
  *     auth failures, etc.) we surface immediately so the UI can show a
  *     real error instead of silently retrying a doomed call.
+ *
+ * Continue-on-length behavior:
+ *   - When the model returns `finish_reason: "length"`, it means the output
+ *     was truncated at max_tokens mid-generation. Instead of returning a
+ *     truncated response, we automatically send another call with the
+ *     partial output appended as an assistant message + a generic
+ *     "continue from where you left off" user prompt, then concatenate.
+ *   - The user sees continuous streaming — they don't notice the boundary
+ *     between the original call and the continuation call(s).
+ *   - We cap continuation rounds at `maxContinuations` (default 3) to
+ *     prevent runaway loops on degenerate inputs.
+ *   - This is a generic continuation mechanism — it does NOT modify the
+ *     caller's system or user prompts. The continuation prompt is a fixed
+ *     generic instruction appended only when needed.
  */
+const CONTINUE_USER_PROMPT =
+  'Continue your previous response from exactly where you left off. Do not repeat any text you have already produced. Do not add any preamble, acknowledgements, or summary — output only the continuation.';
+
 export async function nvidiaChatCompletion(
   opts: NvidiaCallOptions,
 ): Promise<NvidiaCallResult> {
   const model = opts.model || DEFAULT_MODEL;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS;
   const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES;
+  const maxContinuations = opts.maxContinuations ?? 3;
   const callStart = Date.now();
 
   log(
     opts,
-    `start  model=${model} max_tokens=${opts.maxTokens ?? 2048} temp=${opts.temperature ?? 0.7} timeout=${timeoutMs}ms`,
+    `start  model=${model} max_tokens=${opts.maxTokens ?? 2048} temp=${opts.temperature ?? 0.7} timeout=${timeoutMs}ms max_continuations=${maxContinuations}`,
   );
 
-  let lastErr: Error | null = null;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  // Accumulate across the original call + any continuation rounds.
+  let fullContent = '';
+  let fullReasoning = '';
+  let lastTtfbMs: number | null = null;
+  let attemptsUsed = 0;
+  let continuations = 0;
+  let stillTruncated = false;
 
-    try {
-      const { content, reasoning, ttfbMs } = await streamOnce(
-        {
-          model,
-          messages: opts.messages,
-          max_tokens: opts.maxTokens ?? 2048,
-          temperature: opts.temperature ?? 0.7,
-          // Nemotron-3 models accept reasoning_effort. 'low' keeps TTFB
-          // fast (~4s) while still producing a small reasoning trail we
-          // can inspect for debugging. Other models ignore this param.
-          reasoning_effort: DEFAULT_REASONING_EFFORT,
-        },
-        opts.apiKey,
-        controller.signal,
-        opts.onChunk,
-      );
-      clearTimeout(timeout);
-      const elapsed = Date.now() - callStart;
-      log(
-        opts,
-        `ttfb=${ttfbMs ?? 'n/a'}ms  done attempt=${attempt} elapsed=${elapsed}ms content_chars=${content.length} reasoning_chars=${reasoning.length} preview="${content.slice(0, 80)}"`,
-      );
-      if (!content) {
-        throw new Error(
-          `empty content (reasoning_chars=${reasoning.length}, finish_reason may be "length" — increase max_tokens)`,
+  // The messages array may grow across continuation rounds: each round
+  // appends the assistant's partial output + the generic continue prompt.
+  let messages = opts.messages;
+
+  for (let round = 0; round <= maxContinuations; round++) {
+    let lastErr: Error | null = null;
+    let roundResult: StreamOnceResult | null = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const result = await streamOnce(
+          {
+            model,
+            messages,
+            max_tokens: opts.maxTokens ?? 2048,
+            temperature: opts.temperature ?? 0.7,
+            // Nemotron-3 models accept reasoning_effort. 'low' keeps TTFB
+            // fast (~4s) while still producing a small reasoning trail we
+            // can inspect for debugging. Other models ignore this param.
+            reasoning_effort: DEFAULT_REASONING_EFFORT,
+          },
+          opts.apiKey,
+          controller.signal,
+          opts.onChunk,
         );
-      }
-      return { content, reasoning, model, elapsedMs: elapsed, attempts: attempt };
-    } catch (err: unknown) {
-      clearTimeout(timeout);
-      const e = err as Error;
-      const elapsed = Date.now() - callStart;
-      lastErr = e;
-      if (e.name === 'AbortError') {
-        log(opts, `TIMEOUT attempt=${attempt} after ${timeoutMs}ms`);
-      } else {
-        log(opts, `ERROR attempt=${attempt} after ${elapsed}ms: ${e.name}: ${e.message.slice(0, 200)}`);
-      }
-      // Decide whether to retry. Non-retryable errors surface immediately.
-      const retryable = isRetryableError(e);
-      if (attempt < maxRetries && retryable) {
-        const backoff = 500 * attempt; // 500ms, 1000ms, 1500ms, ...
-        log(opts, `retry  backing off ${backoff}ms before attempt ${attempt + 1}`);
-        await new Promise((r) => setTimeout(r, backoff));
-      } else if (!retryable) {
-        // Non-retryable — surface immediately so the UI shows a real error.
-        throw e;
+        clearTimeout(timeout);
+        attemptsUsed++;
+        roundResult = result;
+        lastTtfbMs = result.ttfbMs ?? lastTtfbMs;
+        break;
+      } catch (err: unknown) {
+        clearTimeout(timeout);
+        const e = err as Error;
+        const elapsed = Date.now() - callStart;
+        lastErr = e;
+        if (e.name === 'AbortError') {
+          log(opts, `TIMEOUT round=${round} attempt=${attempt} after ${timeoutMs}ms`);
+        } else {
+          log(opts, `ERROR round=${round} attempt=${attempt} after ${elapsed}ms: ${e.name}: ${e.message.slice(0, 200)}`);
+        }
+        // Decide whether to retry. Non-retryable errors surface immediately.
+        const retryable = isRetryableError(e);
+        if (attempt < maxRetries && retryable) {
+          const backoff = 500 * attempt; // 500ms, 1000ms, 1500ms, ...
+          log(opts, `retry  backing off ${backoff}ms before attempt ${attempt + 1}`);
+          await new Promise((r) => setTimeout(r, backoff));
+        } else if (!retryable) {
+          // Non-retryable — surface immediately so the UI shows a real error.
+          throw e;
+        }
       }
     }
+
+    if (!roundResult) {
+      const elapsed = Date.now() - callStart;
+      const finalErr = lastErr ?? new Error('unknown error');
+      throw new Error(
+        `NVIDIA call failed after ${maxRetries} attempts in round ${round} (${elapsed}ms): ${finalErr.name}: ${finalErr.message}`,
+      );
+    }
+
+    // Accumulate content/reasoning across rounds. Round 0 is the original
+    // call; rounds 1+ are continuations.
+    fullContent += roundResult.content;
+    fullReasoning += roundResult.reasoning;
+
+    const elapsed = Date.now() - callStart;
+    log(
+      opts,
+      `round=${round} done  ttfb=${roundResult.ttfbMs ?? 'n/a'}ms elapsed=${elapsed}ms content_chars=${roundResult.content.length} (total=${fullContent.length}) finish_reason=${roundResult.finishReason ?? 'n/a'}`,
+    );
+
+    if (roundResult.finishReason !== 'length') {
+      // Model finished naturally (or via content_filter / tool_calls).
+      // No continuation needed.
+      stillTruncated = false;
+      break;
+    }
+
+    // finish_reason === 'length' → output was truncated.
+    // If we have continuation budget left, append the partial output as an
+    // assistant message + the generic continue prompt, and loop again.
+    if (round >= maxContinuations || !roundResult.content) {
+      stillTruncated = true;
+      log(
+        opts,
+        `TRUNCATED after ${round + 1} round(s) — exhausted maxContinuations=${maxContinuations}. Output ends mid-sentence.`,
+      );
+      break;
+    }
+
+    continuations++;
+    log(
+      opts,
+      `continue  round=${round + 1}/${maxContinuations} — model hit max_tokens, resuming from char ${fullContent.length}`,
+    );
+
+    // Build the next round's messages: original + assistant's partial + continue prompt.
+    messages = [
+      ...opts.messages,
+      { role: 'assistant' as const, content: roundResult.content },
+      { role: 'user' as const, content: CONTINUE_USER_PROMPT },
+    ];
   }
+
   const elapsed = Date.now() - callStart;
-  const finalErr = lastErr ?? new Error('unknown error');
-  throw new Error(
-    `NVIDIA call failed after ${maxRetries} attempts (${elapsed}ms): ${finalErr.name}: ${finalErr.message}`,
+  log(
+    opts,
+    `done   elapsed=${elapsed}ms content_chars=${fullContent.length} reasoning_chars=${fullReasoning.length} attempts=${attemptsUsed} continuations=${continuations} truncated=${stillTruncated} preview="${fullContent.slice(0, 80)}"`,
   );
+
+  if (!fullContent) {
+    throw new Error(
+      `empty content (reasoning_chars=${fullReasoning.length}, finish_reason may be "length" — increase max_tokens)`,
+    );
+  }
+
+  return {
+    content: fullContent,
+    reasoning: fullReasoning,
+    model,
+    elapsedMs: elapsed,
+    attempts: attemptsUsed,
+    continuations,
+    truncated: stillTruncated,
+  };
 }
 
 /**

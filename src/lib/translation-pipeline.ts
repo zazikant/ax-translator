@@ -60,14 +60,17 @@ function estimateTokens(text: string): number {
 
 /**
  * Calculate max_tokens for the output based on input length.
- * GPT-OSS-120B supports large context; we give generous output budget.
- * Translation length ≈ input length × 1.5 (safety margin for longer target languages).
- * Minimum 2048, maximum 16384.
+ * Nemotron-3-Ultra-550B supports a 128K context window; we give generous output
+ * budget so the model rarely hits `finish_reason: "length"` and forces a
+ * continuation round (see nvidia-client.ts).
+ * Translation length ≈ input length × 1.5 (safety margin for longer target
+ * languages — CJK expansion, agglutinative languages, etc.).
+ * Minimum 2048, maximum 32768.
  */
 function calculateMaxTokens(inputText: string): number {
   const inputTokens = estimateTokens(inputText);
   const outputTokens = Math.ceil(inputTokens * 1.5);
-  return Math.max(2048, Math.min(16384, outputTokens));
+  return Math.max(2048, Math.min(32768, outputTokens));
 }
 
 // ─── Echo Detection ─────────────────────────────────────────────────────────

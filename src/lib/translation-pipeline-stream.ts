@@ -63,11 +63,13 @@ Rules:
 
   const userContent = `Translate the following text from ${srcLabel} to ${targetLabel}. The output must be in ${targetLabel}:\n\n${input.text}`;
 
-  // Estimate max_tokens the same way as the pipeline
+  // Estimate max_tokens the same way as the pipeline (cap 32768 — see
+  // calculateMaxTokens in translation-pipeline.ts). The auto-continue loop
+  // in nvidiaChatCompletion will pick up any residual truncation.
   const cjkChars = (input.text.match(/[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/g) || []).length;
   const otherChars = input.text.length - cjkChars;
   const inputTokens = Math.ceil(cjkChars / 2 + otherChars / 4);
-  const maxTokens = Math.max(2048, Math.min(16384, Math.ceil(inputTokens * 1.5)));
+  const maxTokens = Math.max(2048, Math.min(32768, Math.ceil(inputTokens * 1.5)));
 
   let translatedText = '';
   let model = input.model || DEFAULT_MODEL;
@@ -103,7 +105,7 @@ Rules:
       stage: 'translate',
       elapsedMs: Date.now() - t0,
       ok: true,
-      summary: `${cleaned.length} chars, ${result.attempts} attempt(s)`,
+      summary: `${cleaned.length} chars, ${result.attempts} attempt(s)${result.continuations > 0 ? `, ${result.continuations} continuation(s)` : ''}${result.truncated ? ' [TRUNCATED]' : ''}`,
       ts: Date.now(),
     });
 

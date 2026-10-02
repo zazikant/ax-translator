@@ -2,20 +2,20 @@
  * NVIDIA API Client — streaming edition with controlled, logged calls.
  *
  * Each call to callNvidiaLLM:
- *   - Streams the response (chunk-by-chunk) from nvidia/nemotron-3-ultra-550b-a55b
+ *   - Streams the response (chunk-by-chunk) from openai/gpt-oss-20b
  *   - Has a hard per-call timeout (DEFAULT_CALL_TIMEOUT_MS)
  *   - Retries once with backoff on transient failures (429 / 5xx / network resets)
- *   - Sends `reasoning_effort: 'low'` because Nemotron-3 models expose a
- *     reasoning channel; low effort keeps TTFB fast while still emitting
- *     a small reasoning_content trail we can inspect for debugging.
+ *   - Auto-continues when finish_reason === 'length' (gpt-oss-20b has a 4096-token
+ *     output limit per call — the continuation loop chains multiple 4096-token
+ *     calls to produce longer outputs transparently)
  *   - Emits structured log lines so the pipeline can show progress:
- *       [nvidia] start  model=nvidia/nemotron-3-ultra-550b-a55b max_tokens=2048 temp=0.3
+ *       [nvidia] start  model=openai/gpt-oss-20b max_tokens=4096 temp=0.3
  *       [nvidia] ttfb=523ms first_content="..."
  *       [nvidia] done   elapsed=1234ms content_chars=987 reasoning_chars=4321
  *       [nvidia] retry  attempt=2 reason="AbortError"
  *
  * Base URL: https://integrate.api.nvidia.com/v1
- * Default model: nvidia/nemotron-3-ultra-550b-a55b
+ * Default model: openai/gpt-oss-20b
  *
  * Retry policy (ported from tradingview-notes-app-nvidia/src/lib/brain/nvidia.ts):
  *   - Retryable HTTP statuses: 429, 500, 502, 503, 504
@@ -26,13 +26,21 @@
 
 const NVIDIA_BASE_URL = 'https://integrate.api.nvidia.com/v1';
 
-// Default model: NVIDIA Nemotron-3 Ultra 550B (55B active params via MoE).
-// This is the heavy, high-quality sibling of nvidia/nemotron-3-super-120b-a12b
-// — better for translation workloads where nuance and terminology matter.
-const DEFAULT_MODEL = 'nvidia/nemotron-3-ultra-550b-a55b';
+// Default model: openai/gpt-oss-20b (NVIDIA-hosted GPT-OSS, 20B params).
+// Fast (~2-4s TTFB), clean content output, minimal reasoning overhead.
+// Has a 4096-token output limit per call — the auto-continue loop in
+// nvidiaChatCompletion handles longer outputs by chaining multiple calls.
+const DEFAULT_MODEL = 'openai/gpt-oss-20b';
+
+// gpt-oss-20b has a hard 4096-token output limit per call. We cap max_tokens
+// at this value regardless of what the caller requests — sending higher
+// values would either be silently clamped by the API or cause a 400 error.
+// The auto-continue loop (maxContinuations=3) chains up to 4 calls,
+// giving an effective output capacity of ~16K tokens (~12K chars).
+const MODEL_MAX_TOKENS_CAP = 4096;
 
 // Per-call timeout: 120s. Matches google-ads-subagent-vercel/lib/models.ts.
-// Nemotron-3-Ultra on Vercel Edge can take 8-15s TTFB for larger outputs
+// gpt-oss-20b on Vercel Edge can take 8-15s TTFB for larger outputs
 // (longer translations, especially with high max_tokens), and the 18s
 // budget was tight. 120s is the client-side ceiling; on Hobby Vercel
 // kills the function at 30s first, so the effective budget stays 30s.
@@ -46,6 +54,8 @@ export const DEFAULT_MAX_RETRIES = 1;
 // Nemotron-3 models expose a reasoning channel. 'low' keeps the model fast
 // while still surfacing a short chain-of-thought in `reasoning_content` for
 // debugging. We never stream reasoning to the user — only finished `content`.
+// gpt-oss-20b ignores this parameter (NVIDIA's API silently drops unknown
+// params for non-Nemotron models) — no harm sending it.
 const DEFAULT_REASONING_EFFORT = 'low' as const;
 
 export interface NvidiaChatMessage {
@@ -266,11 +276,18 @@ export async function nvidiaChatCompletion(
   const timeoutMs = opts.timeoutMs ?? DEFAULT_CALL_TIMEOUT_MS;
   const maxRetries = opts.maxRetries ?? DEFAULT_MAX_RETRIES;
   const maxContinuations = opts.maxContinuations ?? 3;
+  // Cap max_tokens at the model's hard limit (4096 for gpt-oss-20b).
+  // The caller may request more (e.g. calculateMaxTokens returns up to
+  // 32768), but the API will reject or silently clamp values above the
+  // model's limit. We cap here so the caller doesn't need to know the
+  // model's limit — the auto-continue loop handles long outputs instead.
+  const requestedMaxTokens = opts.maxTokens ?? 2048;
+  const effectiveMaxTokens = Math.min(requestedMaxTokens, MODEL_MAX_TOKENS_CAP);
   const callStart = Date.now();
 
   log(
     opts,
-    `start  model=${model} max_tokens=${opts.maxTokens ?? 2048} temp=${opts.temperature ?? 0.7} timeout=${timeoutMs}ms max_continuations=${maxContinuations}`,
+    `start  model=${model} max_tokens=${effectiveMaxTokens}${effectiveMaxTokens < requestedMaxTokens ? ` (capped from ${requestedMaxTokens})` : ''} temp=${opts.temperature ?? 0.7} timeout=${timeoutMs}ms max_continuations=${maxContinuations}`,
   );
 
   // Accumulate across the original call + any continuation rounds.
@@ -298,11 +315,11 @@ export async function nvidiaChatCompletion(
           {
             model,
             messages,
-            max_tokens: opts.maxTokens ?? 2048,
+            max_tokens: effectiveMaxTokens,
             temperature: opts.temperature ?? 0.7,
             // Nemotron-3 models accept reasoning_effort. 'low' keeps TTFB
             // fast (~4s) while still producing a small reasoning trail we
-            // can inspect for debugging. Other models ignore this param.
+            // can inspect for debugging. gpt-oss-20b ignores this param.
             reasoning_effort: DEFAULT_REASONING_EFFORT,
           },
           opts.apiKey,
@@ -414,7 +431,7 @@ export async function nvidiaChatCompletion(
 
 /**
  * Convenience: system + user prompt → content string.
- * Default model is nvidia/nemotron-3-ultra-550b-a55b, 120s timeout, 1 retry.
+ * Default model is openai/gpt-oss-20b, 120s timeout, 1 retry.
  */
 export async function callNvidiaLLM(
   systemPrompt: string,

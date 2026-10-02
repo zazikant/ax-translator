@@ -615,7 +615,7 @@ export default function AxTranslatorPage() {
       // Per-chunk pipeline-level retry (3 attempts) for resilience.
       if (isLargeInput) {
         setCurrentStage('chunking');
-        // ~6K tokens per chunk. Nemotron-3-Ultra has a 128K context window,
+        // ~6K tokens per chunk. gpt-oss-20b handles 6K input + ~9K output
         // so 6K input + ~9K output (1.5×) + reasoning overhead fits
         // comfortably in a single 30s Vercel Edge call. Larger chunks
         // mean fewer requests, fewer cooldowns, and faster end-to-end.
@@ -729,7 +729,7 @@ export default function AxTranslatorPage() {
           // Wait before starting the next chunk so NVIDIA's rate-limit
           // window has time to reset. Adaptive based on how the previous
           // chunk went:
-          //   - Succeeded on first attempt:  3s (Nemotron-3-Ultra handles
+          //   - Succeeded on first attempt:  3s (gpt-oss-20b handles
           //                                  burst traffic well; brief breather)
           //   - Succeeded after retries:   10s (something was flaky)
           //   - Failed all attempts:       30s (rate limit likely)
@@ -794,7 +794,7 @@ export default function AxTranslatorPage() {
           qualityScore: succeededChunks > 0 ? Math.round(totalQuality / succeededChunks) : 0,
           attempts: totalAttempts,
           refinements: totalRefinements,
-          model: 'nvidia/nemotron-3-ultra-550b-a55b',
+          model: 'openai/gpt-oss-20b',
           pipeline: [`chunked-${chunks.length}-${succeededChunks}ok`],
         };
         setResult(combinedResult);
@@ -1151,11 +1151,11 @@ export default function AxTranslatorPage() {
                           <p className="text-sm font-medium">
                             {chunkProgress
                               ? `${STAGE_LABELS[currentStage]} — Chunk ${chunkProgress.done + 1} of ${chunkProgress.total}`
-                              : STAGE_LABELS[currentStage] || 'Calling NVIDIA Nemotron-3 Ultra...'}
+                              : STAGE_LABELS[currentStage] || 'Calling NVIDIA GPT-OSS 20B...'}
                           </p>
                           <p className="text-xs text-muted-foreground">
                             {currentStage === 'chunking' && 'Splitting text into manageable chunks...'}
-                            {currentStage === 'translate' && 'Streaming tokens from NVIDIA Nemotron-3 Ultra...'}
+                            {currentStage === 'translate' && 'Streaming tokens from NVIDIA GPT-OSS 20B...'}
                             {currentStage === 'validate' && 'Validating translation quality...'}
                             {currentStage === 'refine' && 'Refining translation...'}
                           </p>

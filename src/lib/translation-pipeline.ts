@@ -60,9 +60,10 @@ function estimateTokens(text: string): number {
 
 /**
  * Calculate max_tokens for the output based on input length.
- * Nemotron-3-Ultra-550B supports a 128K context window; we give generous output
- * budget so the model rarely hits `finish_reason: "length"` and forces a
- * continuation round (see nvidia-client.ts).
+ * gpt-oss-20b has a 4096-token output limit per call; nvidia-client.ts caps
+ * the effective max_tokens at MODEL_MAX_TOKENS_CAP. The auto-continue loop
+ * chains multiple 4096-token calls for longer outputs, so we still calculate
+ * a generous target here — the client handles the per-call enforcement.
  * Translation length ≈ input length × 1.5 (safety margin for longer target
  * languages — CJK expansion, agglutinative languages, etc.).
  * Minimum 2048, maximum 32768.

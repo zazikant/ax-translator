@@ -9,7 +9,7 @@ import { runFastTranslationStream, runTranslationPipelineStream, PipelineEvent }
  *
  * Response: text/event-stream
  *   data: {"type":"stage-start","stage":"translate","ts":1234567890}
- *   data: {"type":"log","line":"[nvidia] start  model=nvidia/nemotron-3-ultra-550b-a55b ...","ts":...}
+ *   data: {"type":"log","line":"[nvidia] start  model=openai/gpt-oss-20b ...","ts":...}
  *   data: {"type":"chunk","text":"न","ts":...}
  *   data: {"type":"chunk","text":"म","ts":...}
  *   data: {"type":"stage-end","stage":"translate","elapsedMs":1234,"ok":true,...}

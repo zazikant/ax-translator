@@ -388,6 +388,11 @@ Platform Benchmark: Behance, editorial illustration, cinematic concept art style
 ==============================`,
     answer: null,
   },
+  {
+    title: 'Prompt for Real Image',
+    prompt: `AI-generated photos often look fake. Capture raw, unedited moments—those subtle imperfections that give a photo its soul. Embrace grain, subtle light leaks, and slight distortions as honest storytelling tools, letting imperfections remind viewers of the image's genuine, fleeting reality.`,
+    answer: null,
+  },
 ];
 
 // ─── Pipeline Stage Labels ────────────────────────────────────────────────────

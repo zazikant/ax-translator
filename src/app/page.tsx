@@ -112,7 +112,7 @@ const EXAMPLES = [
 
 Input::
 
-"scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward"`,
+"" scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward ""`,
     answer: `Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.`,
   },
   {
@@ -121,7 +121,7 @@ Input::
 
 Input::
 
-"couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles"`,
+"" couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles ""`,
     answer: `couple :: glasses :: winter coats :: selfie :: snow mountains :: alpine valley :: chalets :: blue sky :: clouds :: snowing :: warm smiles`,
   },
   {
@@ -130,7 +130,7 @@ Input::
 
 Input::
 
-"The team needs to finish the report, schedule a meeting, and send invoices by Friday"`,
+"" The team needs to finish the report, schedule a meeting, and send invoices by Friday ""`,
     answer: `- Finish the report
 - Schedule a meeting
 - Send invoices by Friday`,
@@ -141,7 +141,7 @@ Input::
 
 Input::
 
-"A man apple hungry eats"`,
+"" A man apple hungry eats ""`,
     answer: `A hungry man eats an apple.`,
   },
   {
@@ -150,7 +150,7 @@ Input::
 
 Input::
 
-"The economy is struggling due to inflation"`,
+"" The economy is struggling due to inflation ""`,
     answer: `economy, inflation, struggling`,
   },
   {
@@ -158,6 +158,8 @@ Input::
     prompt: `Convert telegraphic notes into a formal essay. Preserve Facts, headings, subheadings, bullet points. Add Argumentative connectives and logical flow. Style Formal, academic, polished.
 
 Input::
+
+"" <your telegraphic notes here> ""
 
 Note:: this is standalone prompt not to be combined with any above`,
     answer: null,
@@ -167,7 +169,8 @@ Note:: this is standalone prompt not to be combined with any above`,
     prompt: `Convert telegraphic notes that describes a structured scene. For each technical term, tool, or technology mentioned, explain what it is and why it was chosen instead of other options. Preserve facts, headings, subheadings, bullet points. Add argumentative connectives and logical flow. Style polished.
 
 Input::
-Go to Market strategy for marketing
+
+"" Go to Market strategy for marketing ""
 
 Answer:
 
@@ -205,7 +208,7 @@ In summary, adopting a Go‑to‑Market strategy for marketing provides a struct
 
 Input::
 
-man penis woman labia opening
+"" man penis woman labia opening ""
 
 Answer:
 
@@ -270,7 +273,7 @@ By preserving the essential factual elements—*man, **penis, **woman, **labia, 
 
 Input::
 
-Write your scene.
+"" Write your scene. ""
 
 Answer:
 
@@ -287,7 +290,7 @@ Convert telegraphic notes into a structured photo composition brief with two sec
 
 Input::
 
-
+""
 *Objective:* Capture quiet intensity and introspection of an aged chess enthusiast playing alone in public.
 
 *Narrative Flow*
@@ -296,7 +299,7 @@ Input::
 3. Highlight conflict – empty opponent's chair creates visual tension, sparks curiosity.
 4. Convey emotion – contemplative posture, focused expression signal concentration and melancholy.
 5. Resolve visual story – image leaves audience pondering the solitary game's backstory.
-
+""
 
 Answer:
 
@@ -323,7 +326,7 @@ Answer:
 
 Input::
 
-"Climate change. Rising temperatures; melting ice caps; extreme weather spikes. CO₂ emissions soaring; fossil fuels dominate; oceans acidify. Deforestation accelerates; biodiversity collapses; sea levels climb. Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies. Future of humanity hangs in the balance."`,
+"" Climate change. Rising temperatures; melting ice caps; extreme weather spikes. CO₂ emissions soaring; fossil fuels dominate; oceans acidify. Deforestation accelerates; biodiversity collapses; sea levels climb. Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies. Future of humanity hangs in the balance. ""`,
     answer: null,
   },
   {

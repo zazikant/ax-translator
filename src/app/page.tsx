@@ -108,33 +108,49 @@ interface HistoryEntry {
 const EXAMPLES = [
   {
     title: 'Telegraphic Speech (Basic): Narrative',
-    prompt: `Write a telegraphic speech based on the idea::
-scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward`,
+    prompt: `Write a telegraphic speech based on the idea.
+
+Input::
+
+"scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward",
     answer: `Scientist in the lab, late night; experiment fails again; coffee is cold; notes scattered; breakthrough feels near; data wrong somewhere; mystery deep; focus sharp; deadline tomorrow; funding cut; fear ignored; push forward.`,
   },
   {
     title: 'Tag-Based Prompts',
-    prompt: `Use tag-based prompts only. No grammar, no connectives, double colon separator, just core visual/semantic tokens ::\n  ::\ncouple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles`,
+    prompt: `Use tag-based prompts only. No grammar, no connectives, double colon separator, just core visual/semantic tokens.
+
+Input::
+
+"couple glasses winter coats selfie snow mountains alpine valley chalets blue sky clouds snowing warm smiles",
     answer: `couple :: glasses :: winter coats :: selfie :: snow mountains :: alpine valley :: chalets :: blue sky :: clouds :: snowing :: warm smiles`,
   },
   {
     title: 'Extract Action Items',
-    prompt: `Extract only action items::
-The team needs to finish the report, schedule a meeting, and send invoices by Friday`,
+    prompt: `Extract only action items.
+
+Input::
+
+"The team needs to finish the report, schedule a meeting, and send invoices by Friday",
     answer: `- Finish the report
 - Schedule a meeting
 - Send invoices by Friday`,
   },
   {
     title: 'Sentence from Telegraphic Speech',
-    prompt: `Write sentence from Telegraphic speech idea::
-A man apple hungry eats`,
+    prompt: `Write sentence from Telegraphic speech idea.
+
+Input::
+
+"A man apple hungry eats",
     answer: `A hungry man eats an apple.`,
   },
   {
     title: 'Compress to Keywords',
-    prompt: `Compress to keywords::
-The economy is struggling due to inflation`,
+    prompt: `Compress to keywords.
+
+Input::
+
+"The economy is struggling due to inflation",
     answer: `economy, inflation, struggling`,
   },
   {
@@ -303,13 +319,11 @@ Answer:
   },
   {
     title: 'Telegraphic Speech: Compression and exploration',
-    prompt: `Write a telegraphic speech about::
-Climate change
-Rising temperatures; melting ice caps; extreme weather spikes.
-CO₂ emissions soaring; fossil fuels dominate; oceans acidify.
-Deforestation accelerates; biodiversity collapses; sea levels climb.
-Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies.
-Future of humanity hangs in the balance.`,
+    prompt: `Write a telegraphic speech about climate change.
+
+Input::
+
+"Climate change. Rising temperatures; melting ice caps; extreme weather spikes. CO₂ emissions soaring; fossil fuels dominate; oceans acidify. Deforestation accelerates; biodiversity collapses; sea levels climb. Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies. Future of humanity hangs in the balance.",
     answer: null,
   },
   {

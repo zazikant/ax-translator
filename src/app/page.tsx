@@ -322,11 +322,11 @@ Answer:
   },
   {
     title: 'Telegraphic Speech: Compression and exploration',
-    prompt: `Write a telegraphic speech about climate change.
+    prompt: `Write a telegraphic speech about.
 
 Input::
 
-"" Climate change. Rising temperatures; melting ice caps; extreme weather spikes. CO₂ emissions soaring; fossil fuels dominate; oceans acidify. Deforestation accelerates; biodiversity collapses; sea levels climb. Urgent action required: slash emissions, shift to renewables, reforest, enforce climate policies. Future of humanity hangs in the balance. ""`,
+"" Climate change ""`,
     answer: null,
   },
   {

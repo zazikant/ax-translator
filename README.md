@@ -1,3 +1,36 @@
+# Ax Translator
+
+Test with example to solve a complex thinking
+
+## AX DSPy Pipeline
+
+The translation pipeline is now aligned word-to-word with the [atomic-graph-opencode](https://github.com/zazikant/atomic-graph-opencode) AX DSPy reference implementation, while serving this repo's output contract (`translatedText` + `qualityScore` 0-100) and its NVIDIA transport + SSE streaming architecture:
+
+```
+repeat up to 3 iterations:
+  1. TRANSLATE → translated text   (stage temperature 0.3, dynamic max_tokens)
+  2. VALIDATE  → score, issues[]   (stage temperature 0.1, 0.0-1.0 rubric)
+  if score >= 0.75:
+    break
+  else:
+  3. REFINE    → corrected text    (stage temperature 0.2, DSPy-compiled fix context)
+    go back to step 2
+```
+
+Ported patterns:
+
+- **Stage-specific system prompts** — `TRANSLATE_SYSTEM_PROMPT`, `TRANSLATE_RETRY_SYSTEM_PROMPT`, `CROSS_LANGUAGE_SYSTEM_PROMPT`, `CROSS_LANGUAGE_RETRY_SYSTEM_PROMPT`, `VALIDATE_SYSTEM_PROMPT`, `REFINE_SYSTEM_PROMPT` (mirrors the Bible repo's EXTRACT / EXTRACT_RETRY / VALIDATE / REFINE prompts with their CRITICAL OUTPUT RULES blocks)
+- **buildTranslatePrompts()** — single source of truth for translate-stage prompts, shared word-to-word by the non-streaming pipeline AND the streaming fast path (`/api/translate-stream`)
+- **compileRefinePrompt()** — DSPy-style Module.compile(): surgical fix context compiled from the full error history, not generic retries
+- **ErrorEntry tracking** — every failed attempt is recorded (attempt, stage, error, issues) and fed into the compiled refinement prompt
+- **resumeFrom state machine** — deterministic translate → validate → refine progression, results carried forward between stages
+- **Echo detection** — >80% input overlap detection with forceful retry prompt (cross-language mode), applied in both the non-streaming pipeline and the streaming fast path
+- **Validation threshold** — score >= 0.75 accepted (0.0-1.0 scale, converted to 0-100 at the API boundary)
+- **Robust JSON parsing** — parseLLMJson with balanced-bracket extraction and truncation recovery for validation responses
+- **Retry logic** — up to 3 retries on 429/5xx with 15-second delays (ported from atomic-graph-opencode's proxy route into the LLM client, layered over nvidia-client's transport-level retry and auto-continue)
+- **Stage-specific temperatures** — translate=0.3, validate=0.1, refine=0.2
+- **Stage-based calculateMaxTokens** — validate=1024, translate/refine 2048-8192 (same-language transformation keeps the 4× multiplier; values above gpt-oss-20b's 4096-token per-call cap are handled by nvidia-client's auto-continue loop)
+
 ## Write a telegraphic speech based on the idea::
 
 scientist lab late night experiment fail again coffee cold notes scattered breakthrough near feel it data wrong somewhere mystery deep focus sharp deadline tomorrow funding cut fear ignore push forward

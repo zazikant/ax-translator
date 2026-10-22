@@ -549,7 +549,9 @@ export default function AxTranslatorPage() {
   // Vercel project settings) — see src/app/api/translate/route.ts.
 
   // Translation input state
-  const [inputText, setInputText] = useState('');
+  // Default template shown in the input-text box when the page loads.
+  const DEFAULT_INPUT_TEXT = 'Translate to English.\n\nInput::\n\n"" Write text here ""';
+  const [inputText, setInputText] = useState(DEFAULT_INPUT_TEXT);
   const [sourceLanguage, setSourceLanguage] = useState('en');
   const [targetLanguage, setTargetLanguage] = useState('en');
 

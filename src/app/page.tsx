@@ -280,16 +280,14 @@ Convert telegraphic notes into a structured photo composition brief with two sec
 - light, color, texture, motion, mood, sensory.
 
 Input::
-""
-*Objective:* Capture quiet intensity and introspection of an aged chess enthusiast playing alone in public.
+""*Objective:* Capture quiet intensity and introspection of an aged chess enthusiast playing alone in public.
 
 *Narrative Flow*
 1. Establish setting – outdoor café, relaxed public backdrop.
 2. Introduce subject – solitary elderly player draws eye.
 3. Highlight conflict – empty opponent's chair creates visual tension, sparks curiosity.
 4. Convey emotion – contemplative posture, focused expression signal concentration and melancholy.
-5. Resolve visual story – image leaves audience pondering the solitary game's backstory.
-""
+5. Resolve visual story – image leaves audience pondering the solitary game's backstory.""
 
 Answer:
 

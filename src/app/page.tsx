@@ -474,8 +474,6 @@ AI-generated photos often look fake. Capture raw, unedited moments—those subtl
 
 const STAGE_LABELS: Record<string, string> = {
   translate: 'Translating',
-  validate: 'Validating quality',
-  refine: 'Refining translation',
   chunking: 'Processing chunks',
 };
 
@@ -650,9 +648,7 @@ export default function AxTranslatorPage() {
               setLiveText((prev) => prev + ev.text);
               setCurrentStage('translate');
             } else if (ev.type === 'stage-start' && ev.stage) {
-              setCurrentStage(ev.stage === 'translate' ? 'translate' : ev.stage === 'validate' ? 'validate' : ev.stage === 'refine' ? 'refine' : ev.stage);
-            } else if (ev.type === 'stage-end' && ev.stage === 'translate' && ev.ok) {
-              setCurrentStage('validate');
+              setCurrentStage(ev.stage);
             } else if (ev.type === 'pipeline-end' && ev.result) {
               finalResult = ev.result;
             } else if (ev.type === 'error' && ev.message) {
@@ -754,9 +750,10 @@ export default function AxTranslatorPage() {
               // Use the SAME streaming path as single-translation.
               // keepLog:true so events accumulate across chunks (each chunk's
               // log/chunk events are appended, not overwritten).
-              chunkResult = await streamTranslate(
+              const chunkOk: TranslationResult = await streamTranslate(
                 chunks[i], sourceLanguage, targetLanguage, { keepLog: true }
               );
+              chunkResult = chunkOk;
 
               // Mark chunk as complete in the log
               setLiveEvents((prev) => [...prev, {
@@ -765,7 +762,7 @@ export default function AxTranslatorPage() {
                 stage: `chunk-${i + 1}-${chunks.length}`,
                 ok: true,
                 elapsedMs: 0,
-                summary: `${chunkResult.translatedText.length} chars translated`,
+                summary: `${chunkOk.translatedText.length} chars translated`,
               }]);
 
               lastChunkError = '';
@@ -1238,8 +1235,6 @@ export default function AxTranslatorPage() {
                           <p className="text-xs text-muted-foreground">
                             {currentStage === 'chunking' && 'Splitting text into manageable chunks...'}
                             {currentStage === 'translate' && 'Streaming tokens from NVIDIA GPT-OSS 20B...'}
-                            {currentStage === 'validate' && 'Validating translation quality...'}
-                            {currentStage === 'refine' && 'Refining translation...'}
                           </p>
                         </div>
                       </div>
@@ -1333,8 +1328,7 @@ export default function AxTranslatorPage() {
                         ) : (
                           <Progress
                             value={
-                              currentStage === 'translate' ? 33 :
-                              currentStage === 'validate' ? 66 : 90
+                              currentStage === 'translate' ? 60 : 90
                             }
                             className="h-1.5"
                           />
@@ -1521,32 +1515,23 @@ export default function AxTranslatorPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid sm:grid-cols-3 gap-4">
+                <div className="grid sm:grid-cols-2 gap-4">
                   <div className="space-y-2 p-4 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2">
                       <div className="size-6 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-xs font-bold">1</div>
                       <p className="text-sm font-medium">Translate</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      NVIDIA GPT-OSS 120B translates your text with a carefully compiled prompt. Large texts are auto-chunked at ~6K token boundaries.
+                      NVIDIA GPT-OSS translates your text with a carefully compiled prompt. Large texts are auto-chunked at ~6K token boundaries.
                     </p>
                   </div>
                   <div className="space-y-2 p-4 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2">
-                      <div className="size-6 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs font-bold">2</div>
-                      <p className="text-sm font-medium">Validate</p>
+                      <div className="size-6 rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center text-xs font-bold">2</div>
+                      <p className="text-sm font-medium">Stream Directly</p>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      A separate LLM call evaluates accuracy, fluency, and completeness. Quality score and issues are reported per chunk.
-                    </p>
-                  </div>
-                  <div className="space-y-2 p-4 rounded-lg bg-muted/50">
-                    <div className="flex items-center gap-2">
-                      <div className="size-6 rounded-full bg-blue-500/20 text-blue-500 flex items-center justify-center text-xs font-bold">3</div>
-                      <p className="text-sm font-medium">Refine</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      If validation finds issues, a surgical fix prompt is compiled (DSPy-style) targeting only the problems. Up to 2 refinements.
+                      Output streams token-by-token straight to your screen — no JSON-validate round-trips, no silent retries. Long outputs are handled by the auto-continue loop.
                     </p>
                   </div>
                 </div>

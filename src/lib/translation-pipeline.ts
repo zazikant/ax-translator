@@ -6,27 +6,20 @@
  * ported word-to-word where possible while serving this repo's output
  * contract (TranslationResult with translatedText + qualityScore 0-100):
  *
- * - compileRefinePrompt: Like DSPy's Module.compile() — produces focused
- *   refinement prompts based on error history, not generic retries
- * - ErrorEntry tracking: Full error history for surgical, targeted fixes
- * - resumeFrom state machine: Deterministic pipeline progression
- * - Activity-style discrete steps: translate → validate → refine
  * - Stage-specific system prompts: Each stage has its own optimized prompt
- * - Stage-specific temperatures: translate=0.3, validate=0.1, refine=0.2
+ * - Stage-specific temperatures: translate=0.3
  * - Dynamic max_tokens: Calculated from input length (per stage)
  * - Echo detection: Detects when LLM echoes input unchanged (>80% overlap)
- * - Validation threshold: score >= 0.75 passes (atomic-graph default)
- * - Robust JSON parsing: parseLLMJson + truncation recovery for validate
  *
- * Pipeline flow:
- * 1. Translate/transform text (initial attempt)
- * 2. Validate quality (self-critique, 0.0-1.0 score)
- * 3. If validation fails (score < threshold), refine with compiled error
- *    context and re-validate (up to MAX_ITERATIONS)
- * 4. Return final translated text with metadata
+ * Pipeline flow (single pass — streams directly to the browser):
+ * 1. Translate/transform text (one streaming LLM call)
+ * 2. Echo guard: if the model echoed the input, one forceful retry
+ * 3. Return final translated text with metadata
  *
- * Fast mode (for Vercel Hobby / timeout constraints):
- * - Single translate call only, no validate/refine
+ * Note: the former VALIDATE (JSON self-critique) and REFINE stages were
+ * removed on purpose — the JSON-validate stage could silently retry/loop
+ * on JSON parsing and re-validation, adding long invisible waits before
+ * any output appeared. Translation now streams directly, token-by-token.
  *
  * Chunking note: the caller (page.tsx) chunks large inputs at ~6000-token
  * boundaries before streaming each chunk through /api/translate-stream —
@@ -41,7 +34,7 @@
  * pipeline uses — so both paths stay word-to-word identical.
  */
 
-import { callLLM, calculateMaxTokens, getStageTemperature, parseLLMJson, DEFAULT_MODEL } from './llm-client';
+import { callLLM, calculateMaxTokens, getStageTemperature, DEFAULT_MODEL } from './llm-client';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -63,38 +56,11 @@ export interface TranslationResult {
   pipeline: string[]; // Which stages ran
 }
 
-// ─── DSPy-style Error Tracking (from atomic-graph-opencode) ─────────────────
-
-interface ErrorEntry {
-  attempt: number;
-  stage: 'translate' | 'validate' | 'refine';
-  error: string;
-  issues?: string[];
-}
-
-/** Validation result shape — ported word-to-word from atomic-graph-opencode's
- *  validate step: score is 0.0-1.0 with issues + suggestions lists. */
-interface ValidationResult {
-  score: number;
-  issues: string[];
-  suggestions: string[];
-}
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-/** Minimum validation score (0.0-1.0) required to accept the output.
- *  Ported from atomic-graph-opencode's default threshold (0.75). */
-const VALIDATION_THRESHOLD = 0.75;
-
-/** Maximum pipeline iterations (validate → refine loops).
- *  Ported from atomic-graph-opencode's default (3). */
-const MAX_ITERATIONS = 3;
-
 // ─── Stage-Specific System Prompts (from atomic-graph-opencode's axPipeline) ──
-// Each stage has its own specialized system prompt that focuses the LLM on its
-// specific task. This is the core of the AX DSPy pattern: structured prompting
-// per stage. Prompt structure is ported word-to-word from the Bible repo's
-// EXTRACT / EXTRACT_RETRY / VALIDATE / REFINE prompts, adapted to serve
+// The translate-stage system prompt focuses the LLM on its specific task.
+// This is the core of the AX DSPy pattern: structured prompting per stage.
+// Prompt structure is ported word-to-word from the Bible repo's
+// EXTRACT / EXTRACT_RETRY prompts, adapted to serve
 // translation/transformation output instead of knowledge graph JSON.
 
 // ─── Same-language transformation mode (en→en, hi→hi, etc.) ──────────────────
@@ -152,49 +118,6 @@ CRITICAL OUTPUT RULES:
 - Use natural phrasing that a native speaker of the target language would use.
 - The previous attempt returned the original text unchanged — you must actually translate it this time.`;
 
-// ─── VALIDATE — quality-aware self-critique (ported from atomic-graph) ───────
-// Same structure word-to-word: weighted axes, exact JSON format, scoring
-// bands, and the "Be FAIR" instruction.
-
-const VALIDATE_SYSTEM_PROMPT = `You are a text quality reviewer. Evaluate the provided output and respond in JSON format.
-
-Evaluate on these criteria (weight: semantic fidelity > instruction adherence > completeness > fluency > structure):
-1. SEMANTIC FIDELITY: Does it preserve the writer's meaning? Minor wording changes don't lower score.
-2. INSTRUCTION ADHERENCE: Does it follow the embedded transformation instructions and/or the target language requirement?
-3. COMPLETENESS: Is any information missing or added?
-4. FLUENCY: Is the text natural and well-formed?
-5. STRUCTURAL INTEGRITY: Requested headings, bullet points, and sections present? Orphan fragments? Broken flow?
-
-Respond in this exact JSON format:
-{
-  "score": 0.85,
-  "issues": ["issue1", "issue2"],
-  "suggestions": ["suggestion1"]
-}
-
-Scoring:
-- 0.90-1.00: Faithful representation, minor wording differences only
-- 0.75-0.89: Minor gaps
-- 0.50-0.74: Significant gaps
-- 0.00-0.49: Major problems
-
-Be FAIR — clear input + good output = high score. Don't invent reasons to lower it.
-Only list issues affecting MEANING or STRUCTURE.`;
-
-// ─── REFINE — targeted fixes (ported from atomic-graph) ──────────────────────
-
-const REFINE_SYSTEM_PROMPT = `You are a text refinement engine. Fix the identified issues while preserving what already works.
-Output ONLY the corrected text, nothing else.
-
-CRITICAL OUTPUT RULES:
-- Output ONLY the corrected text. No markdown fences, no explanation, no meta-commentary.
-- Preserve writer's wording where accurate — only fix SEMANTIC or STRUCTURAL problems.
-- Missing bridge or connective? INFER and add it.
-- Awkward or unnatural phrasing? Replace it with a natural, native-quality expression.
-- Rambling or non-atomic passage? TIGHTEN it per the instructions.
-- No speculative additions — never invent facts.
-- Keep everything that already works — return the FULL corrected text with unchanged parts as-is.`;
-
 // ─── buildTranslatePrompts — shared prompt builder ───────────────────────────
 // Single source of truth for translate-stage prompts. Used by the pipeline's
 // translateText() AND by the streaming fast path in
@@ -218,44 +141,6 @@ export function buildTranslatePrompts(
   const systemPrompt = isRetry ? CROSS_LANGUAGE_RETRY_SYSTEM_PROMPT : CROSS_LANGUAGE_SYSTEM_PROMPT;
   const userContent = `Translate the following text from ${srcLabel} to ${targetLabel}. The output must be in ${targetLabel}:\n\n${input.text}`;
   return { systemPrompt, userContent };
-}
-
-// ─── compileRefinePrompt — pure function (DSPy-like) ─────────────────────────
-// Like DSPy's Module.compile() — produces focused prompts based on error history.
-// This is the ONLY place refinement prompt construction happens.
-// Ported word-to-word from atomic-graph-opencode's compileRefinePrompt().
-
-function compileRefinePrompt(
-  issues: string[],
-  errorHistory: ErrorEntry[],
-  stage: 'translate' | 'validate' | 'refine'
-): string {
-  // No errors yet — this is initial context
-  if (errorHistory.length === 0 && issues.length === 0) {
-    return `Initial ${stage} request for text transformation`;
-  }
-
-  // Build surgical context from error history (Mode B: surgical fix)
-  const latestError = errorHistory.length > 0
-    ? errorHistory[errorHistory.length - 1]
-    : null;
-  const previousErrors = errorHistory.slice(0, -1).map(e =>
-    `  Attempt ${e.attempt} | ${e.stage}: ${e.error.substring(0, 200)}`
-  ).join('\n');
-
-  const issueContext = issues.length > 0
-    ? `\nValidation issues to fix:\n${issues.map(i => `  - ${i}`).join('\n')}`
-    : '';
-
-  const errorContext = latestError
-    ? `\nLatest error (attempt ${latestError.attempt}, stage ${latestError.stage}): ${latestError.error.substring(0, 300)}\n${latestError.issues ? `Issues: ${latestError.issues.join(', ')}` : ''}`
-    : '';
-
-  const previousContext = previousErrors.length > 0
-    ? `\nPrevious errors — do NOT repeat these patterns:\n${previousErrors}`
-    : '';
-
-  return `Refinement context for stage "${stage}":${issueContext}${errorContext}${previousContext}`;
 }
 
 // ─── Echo Detection ──────────────────────────────────────────────────────────
@@ -294,7 +179,6 @@ export function cleanOutputText(raw: string): string {
 // ─── AX Pipeline Class (mirrors atomic-graph-opencode's AXPipeline) ──────────
 
 class TranslationPipeline {
-  private errorHistory: ErrorEntry[] = [];
 
   /** Progress emission — the SSE endpoint (translate-stream) and page.tsx
    *  own user-facing progress; emit() writes to the server console (same
@@ -313,27 +197,21 @@ class TranslationPipeline {
   }
 
   /**
-   * Wrap an async API call with rate-limit / transient error detection.
-   * Records errors to errorHistory for DSPy-style compileRefinePrompt().
-   * Ported word-to-word from atomic-graph-opencode's callWithRetryAwareness().
+   * Wrap an async API call with rate-limit / transient error logging.
+   * Does NOT retry or loop — a failure is surfaced to the caller immediately
+   * (the transport-level retry inside nvidia-client is the only retry layer).
+   * Adapted from atomic-graph-opencode's callWithRetryAwareness().
    */
   private async callWithRetryAwareness<T>(
     fn: () => Promise<T>,
     iteration: number,
     phaseLabel: string,
-    stage: ErrorEntry['stage']
+    stage: string
   ): Promise<T> {
     try {
       return await fn();
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-
-      // Track error in history for DSPy-style compiled prompts
-      this.errorHistory.push({
-        attempt: iteration,
-        stage,
-        error: msg,
-      });
 
       const isRateLimit =
         msg.includes('rate limit') ||
@@ -399,120 +277,6 @@ class TranslationPipeline {
       translatedText: cleaned,
       model: input.model || DEFAULT_MODEL,
     };
-  }
-
-  // ─── Step 2: VALIDATE — quality-aware self-critique ──────────────────────
-
-  private async validate(
-    input: TranslationRequest,
-    translatedText: string
-  ): Promise<ValidationResult> {
-    const isSameLanguage = isSameLanguageMode(input);
-    const taskLabel = isSameLanguage ? 'text transformation' : 'translation';
-
-    // Truncate very long inputs for validation (Bible truncates notes at 3000)
-    const textForValidation = input.text.length > 3000
-      ? input.text.slice(0, 3000) + '\n… (input truncated)'
-      : input.text;
-
-    // User prompt ported word-to-word from atomic-graph-opencode's validate step
-    const userPrompt = `Evaluate this ${taskLabel} for quality and semantic fidelity.
-
-Axes (weight: semantic fidelity > instruction adherence > completeness > fluency > structure):
-1. SEMANTIC FIDELITY: Does it preserve the writer's meaning? Minor wording changes don't lower score.
-2. INSTRUCTION ADHERENCE: Does it follow the embedded transformation instructions and/or the target language requirement?
-3. COMPLETENESS: Is any information missing or added?
-4. FLUENCY: Is the text natural and well-formed?
-5. STRUCTURAL INTEGRITY: Requested headings, bullet points, and sections present? Orphan fragments? Broken flow?
-
-Scoring:
-- 0.90-1.00: Faithful representation, minor wording differences only
-- 0.75-0.89: Minor gaps
-- 0.50-0.74: Significant gaps
-- 0.00-0.49: Major problems
-
-Be FAIR — clear input + good output = high score. Don't invent reasons to lower it.
-
-ORIGINAL TEXT:
-${textForValidation}
-
-${isSameLanguage ? 'Transformed output' : `Translation (${input.targetLanguage})`}:
-"""
-${translatedText}
-"""
-
-Return JSON: { "score": 0.85, "issues": ["..."], "suggestions": ["..."] }
-Only list issues affecting MEANING or STRUCTURE.`;
-
-    // AX DSPy: VALIDATE stage uses lowest temperature for objective assessment
-    const temperature = getStageTemperature('validate');
-    const maxTokens = calculateMaxTokens('', 'validate'); // Returns 1024 for validate
-
-    const raw = await callLLM(VALIDATE_SYSTEM_PROMPT, userPrompt, input.apiKey, input.model, maxTokens, temperature);
-
-    // Robust JSON parsing (parseLLMJson + truncation recovery), then clamp
-    // values exactly like atomic-graph-opencode's validate step.
-    const result = parseLLMJson<Partial<ValidationResult>>(raw);
-
-    return {
-      score:
-        typeof result.score === 'number'
-          ? Math.min(1, Math.max(0, result.score))
-          : 0,
-      issues: Array.isArray(result.issues) ? result.issues : [],
-      suggestions: Array.isArray(result.suggestions) ? result.suggestions : [],
-    };
-  }
-
-  // ─── Step 3: REFINE — targeted fixes using DSPy-compiled prompt ──────────
-
-  private async refine(
-    input: TranslationRequest,
-    translatedText: string,
-    issues: string[]
-  ): Promise<string> {
-    const isSameLanguage = isSameLanguageMode(input);
-    const taskLabel = isSameLanguage ? 'text transformation' : 'translation';
-    const srcLabel = input.sourceLanguage === 'auto' ? 'detected' : input.sourceLanguage;
-
-    // Compile DSPy-style refinement context from error history
-    const fixContext = compileRefinePrompt(issues, this.errorHistory, 'refine');
-    console.log(`[AX Pipeline] Refinement context: ${fixContext.substring(0, 200)}`);
-
-    // User prompt ported word-to-word from atomic-graph-opencode's refine step,
-    // with this repo's triple-quoted source/output blocks (serves output fidelity)
-    const userPrompt = `Fix ONLY these specific issues in the ${taskLabel}.
-
-Rules:
-- Preserve writer's wording where accurate
-- Only fix SEMANTIC or STRUCTURAL problems, not style
-- Missing bridge? INFER and add it.
-- Awkward phrasing? Replace with a natural, native-quality expression.
-- Rambling passage? TIGHTEN it per the instructions.
-- No speculative additions.
-- Return the FULL corrected text. Keep unchanged parts as-is.
-- ${fixContext}
-
-Issues:
-${issues.map((i) => `- ${i}`).join('\n')}
-
-Source text (${srcLabel}):
-"""
-${input.text}
-"""
-
-Current ${isSameLanguage ? 'output' : `translation (${input.targetLanguage})`}:
-"""
-${translatedText}
-"""`;
-
-    // AX DSPy: REFINE stage uses slightly higher temperature for creative fixes
-    const temperature = getStageTemperature('refine');
-    const maxTokens = calculateMaxTokens(translatedText, 'refine', isSameLanguage);
-
-    const result = await callLLM(REFINE_SYSTEM_PROMPT, userPrompt, input.apiKey, input.model, maxTokens, temperature);
-
-    return cleanOutputText(result);
   }
 
   // ─── Fast Pipeline (mirrors atomic-graph-opencode's runFast) ─────────────
@@ -582,207 +346,6 @@ ${translatedText}
       pipeline,
     };
   }
-
-  // ─── Main Pipeline Runner (resumeFrom state machine) ─────────────────────
-  // Ported word-to-word from atomic-graph-opencode's run():
-  // deterministic pipeline progression with state tracking, results carried
-  // FORWARD between stages (never re-computed), validate → refine loop with
-  // a 0.75 threshold and up to MAX_ITERATIONS attempts.
-  //
-  // Flow: translate → validate → (if score < threshold) refine → validate → done
-
-  async run(input: TranslationRequest): Promise<TranslationResult> {
-    console.log(`[AX Pipeline] Full pipeline: src=${input.sourceLanguage}, target=${input.targetLanguage}, text length=${input.text.length}`);
-
-    const threshold = VALIDATION_THRESHOLD;
-    const iterations = MAX_ITERATIONS;
-    let score = 0;
-    let attempt = 0;
-    let currentIssues: string[] = [];
-    const pipeline: string[] = [];
-
-    let translatedText = '';
-    let model = input.model || DEFAULT_MODEL;
-
-    // State machine: translate → validate → refine → done
-    type PipelineStage = 'translate' | 'validate' | 'refine' | 'done';
-    let resumeFrom: PipelineStage = 'translate';
-
-    // ─── Stage 1: TRANSLATE (runs once, result carried forward) ──────────
-    if (resumeFrom === 'translate') {
-      attempt++;
-      pipeline.push('translate');
-      this.emit('translating', attempt, 0, false);
-
-      try {
-        const result = await this.callWithRetryAwareness(
-          () => this.translateText(input, false),
-          attempt,
-          'Translate',
-          'translate'
-        );
-        translatedText = result.translatedText;
-        model = result.model;
-
-        // Echo detection (from atomic-graph-opencode pattern) — cross-language only
-        if (isEcho(input.text, translatedText) && !isSameLanguageMode(input)) {
-          console.log('[AX Pipeline] Echo detected in translate — retrying with forceful prompt');
-          pipeline.push('echo-detected');
-          attempt++;
-          pipeline.push('translate-retry');
-
-          try {
-            const retryResult = await this.callWithRetryAwareness(
-              () => this.translateText(input, true),
-              attempt,
-              'Translate (echo retry)',
-              'translate'
-            );
-            translatedText = retryResult.translatedText;
-
-            // If still echoing after retry, note it but continue to validation
-            if (isEcho(input.text, translatedText)) {
-              console.log('[AX Pipeline] Echo persists after retry — validation will catch this');
-              pipeline.push('echo-persist');
-            }
-          } catch {
-            // Retry failed, use original result
-          }
-        }
-
-        resumeFrom = 'validate';
-      } catch (err: unknown) {
-        const errorMsg = err instanceof Error ? err.message : String(err);
-        this.errorHistory.push({ attempt, stage: 'translate', error: errorMsg });
-
-        // Retry translation once (Bible run(): throw is caught by the
-        // exported wrapper, but one in-run retry is attempted first)
-        pipeline.push('translate-retry');
-        attempt++;
-
-        try {
-          const result = await this.callWithRetryAwareness(
-            () => this.translateText(input, true),
-            attempt,
-            'Translate (retry)',
-            'translate'
-          );
-          translatedText = result.translatedText;
-          model = result.model;
-          resumeFrom = 'validate';
-        } catch (err2: unknown) {
-          const errorMsg2 = err2 instanceof Error ? err2.message : String(err2);
-          this.errorHistory.push({ attempt, stage: 'translate', error: errorMsg2 });
-          return {
-            translatedText: '',
-            qualityScore: 0,
-            attempts: attempt,
-            refinements: 0,
-            issues: ['Translation failed after retry', errorMsg2],
-            model,
-            pipeline,
-          };
-        }
-      }
-    }
-
-    // ─── Validate → Refine loop (carries result forward) ─────────────────
-    // Ported word-to-word from atomic-graph-opencode's run() loop:
-    //   while (attempt < iterations && score < threshold && resumeFrom !== 'done')
-
-    while (attempt < iterations && score < threshold && resumeFrom !== 'done') {
-      // ─── Stage 2: VALIDATE ─────────────────────────────────────────────
-      if (resumeFrom === 'validate') {
-        pipeline.push('validate');
-        this.emit('validating', attempt, 0, false);
-
-        try {
-          const validation = await this.callWithRetryAwareness(
-            () => this.validate(input, translatedText),
-            attempt,
-            'Validate',
-            'validate'
-          );
-          score = validation.score;
-          currentIssues = validation.issues;
-
-          // Echo guard (this repo's behavior, serves output correctness):
-          // if validation failed to catch a cross-language echo, force refine
-          if (isEcho(input.text, translatedText) && !isSameLanguageMode(input)) {
-            pipeline.push('echo-caught-by-validation');
-            score = Math.min(score, 0.30);
-            currentIssues = [...currentIssues, 'Output appears identical to source text — not actually translated'];
-          }
-
-          const passed = score >= threshold;
-          this.emit('validating', attempt, score, passed, currentIssues);
-
-          if (passed) {
-            pipeline.push('validate-pass');
-            resumeFrom = 'done';
-          } else if (attempt < iterations) {
-            pipeline.push('validate-fail');
-            resumeFrom = 'refine';
-          } else {
-            resumeFrom = 'done';
-          }
-        } catch (validateError) {
-          console.warn('[AX Pipeline] Validate failed, using default score');
-          score = 0.7; // Bible default fallback score
-          currentIssues = ['Validation step failed — using estimated score'];
-          pipeline.push('validate-error');
-
-          if (score >= threshold) {
-            resumeFrom = 'done';
-          } else if (attempt < iterations) {
-            resumeFrom = 'refine';
-          } else {
-            resumeFrom = 'done';
-          }
-        }
-      }
-
-      // ─── Stage 3: REFINE (DSPy-compiled prompt) ────────────────────────
-      if (resumeFrom === 'refine') {
-        attempt++;
-        pipeline.push(`refine-${attempt}`);
-        this.emit('refining', attempt, score, false);
-
-        try {
-          translatedText = await this.callWithRetryAwareness(
-            () => this.refine(input, translatedText, currentIssues),
-            attempt,
-            'Refine',
-            'refine'
-          );
-          // After refine, loop back to validate (Bible pattern: revalidate)
-          pipeline.push(`revalidate-${attempt}`);
-          resumeFrom = 'validate';
-        } catch (refineError) {
-          console.warn('[AX Pipeline] Refine failed, keeping current result');
-          const errorMsg = refineError instanceof Error ? refineError.message : String(refineError);
-          this.errorHistory.push({ attempt, stage: 'refine', error: errorMsg, issues: currentIssues });
-          // Keep current result, loop back to validate
-          resumeFrom = 'validate';
-          if (attempt >= iterations) {
-            resumeFrom = 'done';
-          }
-        }
-      }
-    }
-
-    this.emit('complete', attempt, score, score >= threshold);
-
-    return {
-      translatedText,
-      qualityScore: Math.round(score * 100), // Boundary: Bible 0.0-1.0 → this repo's 0-100
-      attempts: attempt,
-      refinements: Math.max(0, attempt - 1),
-      issues: currentIssues.length > 0 ? currentIssues : undefined,
-      model,
-      pipeline,
-    };
-  }
 }
 
 // ─── Exported Runners (route.ts contract — unchanged) ────────────────────────
@@ -794,9 +357,12 @@ export async function runFastTranslation(input: TranslationRequest): Promise<Tra
   return ax.runFast(input);
 }
 
-/** Full pipeline: translate → validate → (refine → revalidate)* using the
- *  AX DSPy state machine with threshold 0.75 and up to 3 iterations. */
+/** Full pipeline — now identical to fast mode: one direct translate pass.
+ *  The JSON-validate stage (and its validate → refine → revalidate loop)
+ *  was removed because it could silently retry/loop. Kept as a separate
+ *  export so the API route contract is unchanged. */
 export async function runTranslationPipeline(input: TranslationRequest): Promise<TranslationResult> {
+  console.log('[AX Pipeline] Full mode: JSON-validate stage removed — running direct translate (same as fast mode)');
   const ax = new TranslationPipeline();
-  return ax.run(input);
+  return ax.runFast(input);
 }

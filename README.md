@@ -4,32 +4,25 @@ Test with example to solve a complex thinking
 
 ## AX DSPy Pipeline
 
-The translation pipeline is now aligned word-to-word with the [atomic-graph-opencode](https://github.com/zazikant/atomic-graph-opencode) AX DSPy reference implementation, while serving this repo's output contract (`translatedText` + `qualityScore` 0-100) and its NVIDIA transport + SSE streaming architecture:
+The translation pipeline is derived from the [atomic-graph-opencode](https://github.com/zazikant/atomic-graph-opencode) AX DSPy reference implementation, while serving this repo's output contract (`translatedText` + `qualityScore` 0-100) and its NVIDIA transport + SSE streaming architecture.
+
+The JSON-validate stage (and the validate → refine → revalidate loop) was **removed on purpose**: the JSON self-critique step could silently retry/loop on JSON parsing, adding long invisible waits before any output appeared. Translation now runs a single pass and streams directly:
 
 ```
-repeat up to 3 iterations:
-  1. TRANSLATE → translated text   (stage temperature 0.3, dynamic max_tokens)
-  2. VALIDATE  → score, issues[]   (stage temperature 0.1, 0.0-1.0 rubric)
-  if score >= 0.75:
-    break
-  else:
-  3. REFINE    → corrected text    (stage temperature 0.2, DSPy-compiled fix context)
-    go back to step 2
+1. TRANSLATE → translated text   (stage temperature 0.3, dynamic max_tokens)
+   → streams token-by-token to the browser (SSE)
+   echo guard: if the model echoed the input unchanged,
+   one forceful retry with the anti-echo prompt
 ```
 
-Ported patterns:
+Kept patterns:
 
-- **Stage-specific system prompts** — `TRANSLATE_SYSTEM_PROMPT`, `TRANSLATE_RETRY_SYSTEM_PROMPT`, `CROSS_LANGUAGE_SYSTEM_PROMPT`, `CROSS_LANGUAGE_RETRY_SYSTEM_PROMPT`, `VALIDATE_SYSTEM_PROMPT`, `REFINE_SYSTEM_PROMPT` (mirrors the Bible repo's EXTRACT / EXTRACT_RETRY / VALIDATE / REFINE prompts with their CRITICAL OUTPUT RULES blocks)
+- **Stage-specific system prompts** — `TRANSLATE_SYSTEM_PROMPT`, `TRANSLATE_RETRY_SYSTEM_PROMPT`, `CROSS_LANGUAGE_SYSTEM_PROMPT`, `CROSS_LANGUAGE_RETRY_SYSTEM_PROMPT` (mirrors the Bible repo's EXTRACT / EXTRACT_RETRY prompts with their CRITICAL OUTPUT RULES blocks)
 - **buildTranslatePrompts()** — single source of truth for translate-stage prompts, shared word-to-word by the non-streaming pipeline AND the streaming fast path (`/api/translate-stream`)
-- **compileRefinePrompt()** — DSPy-style Module.compile(): surgical fix context compiled from the full error history, not generic retries
-- **ErrorEntry tracking** — every failed attempt is recorded (attempt, stage, error, issues) and fed into the compiled refinement prompt
-- **resumeFrom state machine** — deterministic translate → validate → refine progression, results carried forward between stages
 - **Echo detection** — >80% input overlap detection with forceful retry prompt (cross-language mode), applied in both the non-streaming pipeline and the streaming fast path
-- **Validation threshold** — score >= 0.75 accepted (0.0-1.0 scale, converted to 0-100 at the API boundary)
-- **Robust JSON parsing** — parseLLMJson with balanced-bracket extraction and truncation recovery for validation responses
-- **Retry logic** — up to 3 retries on 429/5xx with 15-second delays (ported from atomic-graph-opencode's proxy route into the LLM client, layered over nvidia-client's transport-level retry and auto-continue)
-- **Stage-specific temperatures** — translate=0.3, validate=0.1, refine=0.2
-- **Stage-based calculateMaxTokens** — validate=1024, translate/refine 2048-8192 (same-language transformation keeps the 4× multiplier; values above gpt-oss-20b's 4096-token per-call cap are handled by nvidia-client's auto-continue loop)
+- **Stage-specific temperature** — translate=0.3
+- **Stage-based calculateMaxTokens** — translate 2048-32768 (same-language transformation keeps the 4× multiplier; values above gpt-oss-20b's 4096-token per-call cap are handled by nvidia-client's auto-continue loop)
+- **No JSON-validate stage** — no JSON parsing, no silent retry/loop; failures surface immediately
 
 ## Write a telegraphic speech based on the idea::
 
@@ -98,9 +91,8 @@ Translate text into clean, understandable language using a DSPy-inspired pipelin
 
 ## Features
 
-- **3-Stage Pipeline**: Translate → Validate → Refine (DSPy-inspired)
-- **Quality Scoring**: Automatic validation with quality score (0-100)
-- **Surgical Refinement**: If quality is low, targeted fixes are applied
+- **Direct Streaming**: Translation streams token-by-token to the browser (SSE) — single translate pass, no JSON-validate round-trips
+- **Echo Guard**: If the model echoes the input instead of translating, one forceful retry with the anti-echo prompt
 - **26 Languages**: Including Hindi, Spanish, French, Japanese, Chinese, Arabic, and more
 - **Default Source: English**: The "From" dropdown defaults to English (Auto Detect is hidden from the UI)
 - **Server-Side API Key**: NVIDIA API key is read from the `NVIDIA_API_KEY` environment variable on Vercel — never sent from the browser
@@ -154,22 +146,10 @@ NVIDIA_API_KEY=nvapi-xxxxx
 
 ## How the Pipeline Works
 
-### Stage 1: Translate
-NVIDIA GPT-OSS 20B translates your text with a carefully compiled system prompt that preserves meaning and tone. The model has a 4096-token output limit per call, but the auto-continue loop in the NVIDIA client transparently chains multiple calls to produce longer outputs — the user sees continuous token streaming with no visible boundary between calls.
+### Single Pass: Translate
+NVIDIA GPT-OSS 20B translates your text with a carefully compiled system prompt that preserves meaning and tone, and the output streams token-by-token to the browser. The model has a 4096-token output limit per call, but the auto-continue loop in the NVIDIA client transparently chains multiple calls to produce longer outputs — the user sees continuous token streaming with no visible boundary between calls.
 
-### Stage 2: Validate
-A separate LLM call evaluates accuracy, fluency, completeness, and terminology. Returns a quality score (0-100) and list of issues.
-
-### Stage 3: Refine
-If validation finds issues, a surgical fix prompt is compiled (DSPy-style) targeting only the problems. Up to 2 refinements.
-
-## DSPy/Ax Design Principles
-
-- **Signature-based prompt compilation** (`compileTranslatePrompt`)
-- **Mode A (initial)**: Empty error history → fresh translation prompt
-- **Mode B (surgical fix)**: Latest error + previous attempts → focused fix prompt
-- **Workflow never passes raw error history** — only compiled prompts
-- **Each step is a discrete, testable activity** (like DSPy Signatures)
+There is no validate/refine stage: a JSON-validate step that could silently retry/loop was removed so translation always streams directly. If the model echoes the input instead of translating (cross-language mode), one forceful retry with the anti-echo prompt is attempted.
 
 ## Project Structure
 

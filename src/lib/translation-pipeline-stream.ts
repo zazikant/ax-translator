@@ -14,10 +14,12 @@
  *   { type: 'error',        message, ts }
  *
  * The fast path calls nvidiaChatCompletion directly for live token
- * streaming, but builds its prompts via buildTranslatePrompts() — the SAME
- * builder the non-streaming AX pipeline uses — and applies the Bible's
+ * streaming, and builds its prompts via buildTranslatePrompts() — the SAME
+ * builder the non-streaming path uses — and applies the Bible's
  * runFast echo detection (one forceful retry with the anti-echo prompt).
- * Each LLM call is a "controlled call": 120s timeout, retry, structured logs.
+ * There is NO JSON-validate stage: translation streams directly, and the
+ * only retry layers are nvidia-client's transport-level retry/auto-continue
+ * and the single echo-guard retry.
  */
 
 import { nvidiaChatCompletion, DEFAULT_MODEL } from './nvidia-client';
@@ -25,8 +27,6 @@ import { calculateMaxTokens } from './llm-client';
 import {
   TranslationRequest,
   TranslationResult,
-  runTranslationPipeline,
-  runFastTranslation,
   buildTranslatePrompts,
   isEcho,
   isSameLanguageMode,
@@ -183,40 +183,20 @@ export async function runFastTranslationStream(
 }
 
 /**
- * Streaming full pipeline: translate → validate → refine.
- *
- * For simplicity, this still uses the underlying runTranslationPipeline
- * (which doesn't stream chunks), but emits stage-start/stage-end events
- * for each step so the browser sees progress.
- *
- * To get live token streaming for ALL stages (not just translate), we'd
- * need to refactor the AX pipeline to use nvidiaChatCompletion directly.
- * For now, fast mode gives live chunks; full mode gives step visibility
- * without per-token streaming.
+ * Streaming "full pipeline" — the JSON-validate stage was removed, so this
+ * is now the SAME direct streaming translate pass as runFastTranslationStream
+ * (one LLM call, live token chunks, echo guard). Kept as a separate export
+ * so the SSE route contract is unchanged; no mode ever runs a silent
+ * multi-call loop anymore.
  */
 export async function runTranslationPipelineStream(
   input: TranslationRequest,
   emit: EmitFn,
 ): Promise<TranslationResult> {
-  emit({ type: 'stage-start', stage: 'full-pipeline', ts: Date.now() });
-  emit({ type: 'log', line: '[ax-pipeline] full mode: translate → validate → refine (AX DSPy, threshold 0.75)', ts: Date.now() });
-
-  const t0 = Date.now();
-  try {
-    const result = await runTranslationPipeline(input);
-    emit({
-      type: 'stage-end',
-      stage: 'full-pipeline',
-      elapsedMs: Date.now() - t0,
-      ok: !!result.translatedText,
-      summary: `stages=[${result.pipeline.join(',')}] quality=${result.qualityScore} refinements=${result.refinements}`,
-      ts: Date.now(),
-    });
-    emit({ type: 'pipeline-end', result, ts: Date.now() });
-    return result;
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    emit({ type: 'error', message: msg, ts: Date.now() });
-    throw err;
-  }
+  emit({
+    type: 'log',
+    line: '[ax-pipeline] JSON-validate stage removed — streaming directly (single translate pass)',
+    ts: Date.now(),
+  });
+  return runFastTranslationStream(input, emit);
 }

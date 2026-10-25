@@ -467,6 +467,45 @@ You are an expert assistant specializing in frame interpolation and motion conti
 AI-generated photos often look fake. Capture raw, unedited moments—those subtle imperfections that give a photo its soul. Embrace grain, subtle light leaks, and slight distortions as honest storytelling tools, letting imperfections remind viewers of the image's genuine, fleeting reality.`,
     answer: null,
   },
+  {
+    title: 'Face Swap',
+    prompt: `How to Perform a Correct Face Swap Using a Reference Image
+
+1. Prepare Images
+
+   - Source: face to replace.
+   - Reference: face to insert.
+
+2. Detect & Isolate Faces
+
+   - Run Haar or MTCNN → bounding boxes.
+   - Extract faces → separate layers.
+
+3. Align Faces
+
+   - Detect landmarks: eyes, nose tip, mouth corners.
+   - Compute affine transform: map reference → source.
+   - Warp reference to match source orientation and scale.
+
+4. Blend Seamlessly
+
+   - Mask warped face area.
+   - Feather edges with Gaussian blur.
+   - Overlay onto source using mask; harmonize skin tones and lighting.
+
+5. Post‑Processing
+
+   - Adjust color balance, contrast, saturation.
+   - Optional smoothing filter for residual artifacts.
+
+6. Validate Result
+
+   - Inspect for naturalness.
+   - Correct misalignments or color mismatches.
+
+Follow steps: detect, align, warp, blend, refine → realistic face swap. AI-generated photos often look fake. Capture raw, unedited moments—those subtle imperfections that give a photo its soul. Embrace grain, subtle light leaks, and slight distortions as honest storytelling tools, letting imperfections remind viewers of the image's genuine, fleeting reality.`,
+    answer: null,
+  },
 ];
 
 // ─── Pipeline Stage Labels ────────────────────────────────────────────────────

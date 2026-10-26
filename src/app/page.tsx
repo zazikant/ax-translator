@@ -641,7 +641,7 @@ AI-generated photos often appear artificial. Capture raw, unedited moments—gra
     answer: null,
   },
   {
-    title: 'image face and cloth replace',
+    title: 'image face and cloth swap',
     prompt: `How to Perform a Correct Character Swap (Face + Clothing) Using a Reference Image
 
 1. Prepare Images

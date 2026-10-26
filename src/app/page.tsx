@@ -609,7 +609,24 @@ export default function AxTranslatorPage() {
 
   // Translation input state
   // Default template shown in the input-text box when the page loads.
-  const DEFAULT_INPUT_TEXT = 'Translate to English.\n\nInput::\n""Write text here""';
+  const DEFAULT_INPUT_TEXT = `(
+Translate to English(connects your own words grammatically).
+
+Input::
+""Write text here""
+======
+Powerful Main Translation
+
+""Write text here""Write text here
+
+=====
+
+Primary Translation
+
+""Write text here""
+
+=====
+)`;
   const [inputText, setInputText] = useState(DEFAULT_INPUT_TEXT);
   const [sourceLanguage, setSourceLanguage] = useState('en');
   const [targetLanguage, setTargetLanguage] = useState('en');

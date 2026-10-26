@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -46,6 +47,8 @@ import {
   Info,
   Download,
   ChevronDown,
+  Search,
+  X,
 } from 'lucide-react';
 
 // ─── Language Options ────────────────────────────────────────────────────────
@@ -680,6 +683,13 @@ Follow steps: detect, segment, align, warp, blend, refine → realistic full-cha
   },
 ];
 
+// ─── Examples Scroll Threshold ───────────────────────────────────────────────
+// The examples list renders inline (page grows) up to this many items.
+// Beyond it, the list becomes internally scrollable so the page does not
+// become excessively long as more examples are added.
+
+const EXAMPLES_SCROLL_THRESHOLD = 20;
+
 // ─── Pipeline Stage Labels ────────────────────────────────────────────────────
 
 const STAGE_LABELS: Record<string, string> = {
@@ -764,6 +774,9 @@ Primary Translation
   const [sourceLanguage, setSourceLanguage] = useState('en');
   const [targetLanguage, setTargetLanguage] = useState('en');
 
+  // Prompt Examples search (filters the example list by title)
+  const [exampleSearch, setExampleSearch] = useState('');
+
   // Translation output state
   const [result, setResult] = useState<TranslationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -800,6 +813,16 @@ Primary Translation
 
   // Ref for the output textarea (for large text rendering)
   const outputRef = useRef<HTMLDivElement>(null);
+
+  // ─── Prompt Examples: title filter + scroll trigger ─────────────────
+
+  const trimmedExampleSearch = exampleSearch.trim();
+  const filteredExamples = trimmedExampleSearch
+    ? EXAMPLES.filter((e) =>
+        e.title.toLowerCase().includes(trimmedExampleSearch.toLowerCase())
+      )
+    : EXAMPLES;
+  const examplesScrollable = filteredExamples.length > EXAMPLES_SCROLL_THRESHOLD;
 
   // ─── Estimated tokens for input ──────────────────────────────────────
 
@@ -1653,7 +1676,37 @@ Primary Translation
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
-                {EXAMPLES.map((example, index) => (
+                {/* Search examples by title */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                  <Input
+                    value={exampleSearch}
+                    onChange={(e) => setExampleSearch(e.target.value)}
+                    placeholder="Search examples by title..."
+                    className="pl-9 pr-8 h-9"
+                  />
+                  {exampleSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setExampleSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label="Clear search"
+                    >
+                      <X className="size-4" />
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Showing {filteredExamples.length} of {EXAMPLES.length} examples
+                </p>
+                <div
+                  className={
+                    examplesScrollable
+                      ? 'space-y-2 max-h-[70vh] overflow-y-auto pr-1'
+                      : 'space-y-2'
+                  }
+                >
+                {filteredExamples.map((example, index) => (
                   <Collapsible key={index} className="border rounded-lg">
                     <CollapsibleTrigger asChild>
                       <Button
@@ -1693,6 +1746,12 @@ Primary Translation
                     </CollapsibleContent>
                   </Collapsible>
                 ))}
+                </div>
+                {filteredExamples.length === 0 && (
+                  <div className="text-sm text-muted-foreground text-center py-6 border border-dashed rounded-lg">
+                    No examples match &quot;{trimmedExampleSearch}&quot;
+                  </div>
+                )}
               </CardContent>
             </Card>
 

@@ -530,53 +530,6 @@ This is text[whisper] ===`,
     answer: null,
   },
   {
-    title: 'Video face swap+ clothing',
-    prompt: `**How to Perform a Correct Full Character Swap (Face, Body, and Clothing) Using a Reference Image**
-
-1. **Prepare Images**
-   - **Source**: Character (face, body, and clothing) to be replaced.
-   - **Reference**: Character (face, body, and clothing) to be inserted.
-
-2. **Detect & Isolate Characters**
-   - Run full-body detection (e.g., pose-estimation or segmentation models) to obtain bounding boxes and body keypoints.
-   - Segment the entire character—including head, torso, limbs, and clothing—into separate layers, separating them from the background.
-
-3. **Align Characters**
-   - Detect landmarks (eyes, nose tip, mouth corners, shoulders, hips, and limb joints).
-   - Compute an affine or thin-plate-spline transform mapping the reference character's pose to the source's pose.
-   - Warp the reference character's face, body, and clothing to match the source's orientation, scale, and posture.
-
-4. **Blend Seamlessly**
-   - Create a mask for the warped character area, covering face, body, and garments.
-   - Feather the mask edges with a Gaussian blur.
-   - Overlay the masked, warped character onto the source, harmonizing skin tones, fabric textures, shadows, and lighting across the entire figure.
-
-5. **Post-Processing**
-   - Adjust color balance, contrast, and saturation for both skin and clothing.
-   - Match garment folds, wrinkles, and lighting direction to the source scene.
-   - Optionally apply a smoothing filter to remove residual artifacts.
-
-6. **Validate Result**
-   - Inspect for naturalness in face, body proportions, and clothing fit.
-   - Correct any misalignments, texture mismatches, or color inconsistencies.
-
-**Key Principles for Realistic Video Character Swaps**
-
-- Keep all other characters and scene elements unchanged to preserve narrative fidelity.
-- Maintain chronological order of frames; use the initial frame as an anchor for all interpolations.
-- Prevent alteration of the reference frame to ensure visual accuracy.
-- Track the swapped character's body and clothing consistently across frames using pose tracking and optical flow.
-- Apply frame interpolation to create intermediate frames, increasing frame rate and reducing motion stutter.
-- Use optical flow and deep-learning models to predict realistic motion vectors for both face and body, enabling smooth slow-motion effects and high-frame-rate playback.
-- Adjust interpolation rate based on scene complexity, balancing processing demands with visual quality.
-- Preserve accurate colors and clothing textures across frames to avoid abrupt color, texture, or motion jumps.
-
-**Authenticity in Visual Storytelling**
-
-AI-generated photos often appear artificial. Capture raw, unedited moments—grain, subtle light leaks, and slight distortions—to give photos soul. Embrace these imperfections as honest storytelling tools, reminding viewers of the image's genuine, fleeting reality.`,
-    answer: null,
-  },
-  {
     title: 'image face and cloth swap',
     prompt: `How to Perform a Correct Character Swap on ""image 1""(Face + Clothing) Using a Reference Image 2. Face and clothing swap pipeline, A face and clothing swap follows a fixed sequence: detect, align, warp, blend, refine. Structuring the process as steps ensures a realistic result. Detect → segment → align → warp → blend → refine defines the full-character swap workflow. The source image provides the face to be replaced; the reference image provides the replacement face. Distinguishing roles prevents confusion in the pipeline. Haar cascades or MTCNN produce bounding boxes to locate faces. Detection is the prerequisite for isolating face regions as separate layers. Key points (eyes, nose tip, mouth corners) enable geometric alignment between faces. Landmarks anchor the correspondence needed for warping. Extending the swap from face alone to face plus clothing broadens the replacement task. The same pipeline structure is reused at character level. Detecting and isolating the full character (not just the face) is the first step of character swap. It parallels face detection but at larger scope. Reference face and clothing are warped to match the source geometry. Segmentation or pose models split the image into face, hair, and clothing layers. Post-processing refinement Color balance, contrast, saturation, and optional smoothing remove residual artifacts. Refinement polishes the composite after blending. AI-generated photos often look fake due to excessive perfection. This motivates the aesthetic argument that follows. Grain, light leaks, and slight distortions signal genuine, unedited moments. Imperfections act as honest storytelling tools that convey fleeting reality. Raw Unedited Moments Capturing unposed, unedited photos preserves the subtle flaws that give an image its soul. Inspect the output for naturalness and correct misalignments or color mismatches. Validation closes the loop on the workflow. Each transferred expression is checked against the source's intent, implying iterative correction before proceeding. Source expressions are blended onto the reference face via the landmark grid — the core transfer step. Transferred expressions must be re-lit to match the reference face's environment for visual believability. The expression-enhanced face replaces the reference character's original face in the final media output.`,
     answer: null,

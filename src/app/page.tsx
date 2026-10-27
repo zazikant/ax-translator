@@ -472,41 +472,7 @@ AI-generated photos often look fake. Capture raw, unedited moments—those subtl
   },
   {
     title: 'Face Swap',
-    prompt: `How to Perform a Correct Face Swap Using a Reference Image
-
-1. Prepare Images
-
-   - Source: face to replace.
-   - Reference: face to insert.
-
-2. Detect & Isolate Faces
-
-   - Run Haar or MTCNN → bounding boxes.
-   - Extract faces → separate layers.
-
-3. Align Faces
-
-   - Detect landmarks: eyes, nose tip, mouth corners.
-   - Compute affine transform: map reference → source.
-   - Warp reference to match source orientation and scale.
-
-4. Blend Seamlessly
-
-   - Mask warped face area.
-   - Feather edges with Gaussian blur.
-   - Overlay onto source using mask; harmonize skin tones and lighting.
-
-5. Post‑Processing
-
-   - Adjust color balance, contrast, saturation.
-   - Optional smoothing filter for residual artifacts.
-
-6. Validate Result
-
-   - Inspect for naturalness.
-   - Correct misalignments or color mismatches.
-
-Follow steps: detect, align, warp, blend, refine → realistic face swap. AI-generated photos often look fake. Capture raw, unedited moments—those subtle imperfections that give a photo its soul. Embrace grain, subtle light leaks, and slight distortions as honest storytelling tools, letting imperfections remind viewers of the image's genuine, fleeting reality.`,
+    prompt: `Perform a Correct Character Swap on ""image 1""(Face) Using a Reference Image 2. Face swap pipeline, A face swap follows a fixed sequence: detect, align, warp, blend, refine. Structuring the process as steps ensures a realistic result. Detect → segment → align → warp → blend → refine defines the full-character swap workflow. The source image provides the face to be replaced; the reference image provides the replacement face. Distinguishing roles prevents confusion in the pipeline. Haar cascades or MTCNN produce bounding boxes to locate faces. Detection is the prerequisite for isolating face regions as separate layers. Key points (eyes, nose tip, mouth corners) anchor geometric correspondence between faces, enabling alignment and warping. The same pipeline structure is reused at character level. Detecting and isolating the full character is the first step of character swap. It parallels face detection but at larger scope. Reference face is warped to match the source geometry. Segmentation or pose models split the image into face, hair, and other layers for compositing. Post-processing refinement Color balance, contrast, saturation, and optional smoothing remove residual artifacts. Refinement polishes the composite after blending. AI-generated photos often look fake. Capture raw, unedited moments—those subtle imperfections that give a photo its soul. Embrace grain, subtle light leaks, and slight distortions as honest storytelling tools, letting imperfections remind viewers of the image's genuine, fleeting reality. Raw Unedited Moments Capturing unposed, unedited photos preserves the subtle flaws that give an image its soul. Inspect the output for naturalness and correct misalignments or color mismatches. Validation closes the loop on the workflow. Each transferred expression is checked against the source's intent, implying iterative correction before proceeding. Source expressions are blended onto the reference face via the landmark grid — the core transfer step. Transferred expressions must be re-lit to match the reference face's environment for visual believability. The expression-enhanced face replaces the reference character's original face in the final media output.  ""The expression-enhanced face replaces the reference character's original face in the final media output.""`,
     answer: null,
   },
   {

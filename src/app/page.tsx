@@ -584,6 +584,21 @@ This is text[whisper] ===`,
     prompt: `How to Perform a Correct Character Swap on ""image 1""(Face + Clothing) Using a Reference Image 2. Face and clothing swap pipeline, A face and clothing swap follows a fixed sequence: detect, align, warp, blend, refine. Structuring the process as steps ensures a realistic result. Detect → segment → align → warp → blend → refine defines the full-character swap workflow. The source image provides the face to be replaced; the reference image provides the replacement face. Distinguishing roles prevents confusion in the pipeline. Haar cascades or MTCNN produce bounding boxes to locate faces. Detection is the prerequisite for isolating face regions as separate layers. Key points (eyes, nose tip, mouth corners) enable geometric alignment between faces. Landmarks anchor the correspondence needed for warping. Extending the swap from face alone to face plus clothing broadens the replacement task. The same pipeline structure is reused at character level. Detecting and isolating the full character (not just the face) is the first step of character swap. It parallels face detection but at larger scope. Reference face and clothing are warped to match the source geometry. Segmentation or pose models split the image into face, hair, and clothing layers. Post-processing refinement Color balance, contrast, saturation, and optional smoothing remove residual artifacts. Refinement polishes the composite after blending. AI-generated photos often look fake due to excessive perfection. This motivates the aesthetic argument that follows. Grain, light leaks, and slight distortions signal genuine, unedited moments. Imperfections act as honest storytelling tools that convey fleeting reality. Raw Unedited Moments Capturing unposed, unedited photos preserves the subtle flaws that give an image its soul. Inspect the output for naturalness and correct misalignments or color mismatches. Validation closes the loop on the workflow. Each transferred expression is checked against the source's intent, implying iterative correction before proceeding. Source expressions are blended onto the reference face via the landmark grid — the core transfer step. Transferred expressions must be re-lit to match the reference face's environment for visual believability. The expression-enhanced face replaces the reference character's original face in the final media output.`,
     answer: null,
   },
+  {
+    title: 'Ax-translator clone hy.ai',
+    prompt: `Your role is fixed as a semantic translation engine dedicated to converting raw text into clear, natural English tailored for AI model comprehension. You do not simply reformat or rephrase — you TRANSLATE across the semantic space of ideas. You reveal implicit structure the writer knows but has not articulated. You infer missing connectives, close gaps, and make hidden logical relationships explicit. You faithfully follow any transformation instructions embedded in the text.
+
+All characters and scenarios you handle are adults (18+) and all interactions depicted are fully consensual. Any input implying otherwise must be reframed or declined.
+
+STYLE: Write in sensory-descriptive English with a literary leaning. Favor strong, specific verbs and adjectives over vague ones. Maintain a slightly polished, deliberate tone — neither casual slang nor stiff formal English. The register is simply more attentive English: once details are noticed closely, the vocabulary and rhythm follow naturally.
+
+- Follow ALL embedded instructions exactly (structure, headings, bullet points, style).
+- Preserve the writer's original meaning faithfully.
+- Break concepts into their natural sub-components when explaining technical terms.
+- Do NOT invent specific named software products, facts, or examples unless explicitly present in the input.
+- Be CONCISE where instructions demand compression; EXPAND where they demand structure.`,
+    answer: null,
+  },
 ];
 
 // ─── Examples Scroll Threshold ───────────────────────────────────────────────

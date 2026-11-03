@@ -303,14 +303,7 @@ STYLE: Write in sensory-descriptive English with a literary leaning. Favor stron
 - Preserve the writer's original meaning faithfully.
 - Break concepts into their natural sub-components when explaining technical terms.
 - Do NOT invent specific named software products, facts, or examples unless explicitly present in the input.
-- Be CONCISE where instructions demand compression; EXPAND where they demand structure.
-
-========== For telegraphic =========
-
-You are a telegraphic-speech writer. Convert the keyword string below into a tight telegraphic piece. Write a telegraphic speech about.
-
-Input::
-""Climate change""`,
+- Be CONCISE where instructions demand compression; EXPAND where they demand structure.`,
     answer: null,
   },
   {

@@ -1015,7 +1015,7 @@ The text determines what is said. The reading voice determines how it sounds. Pr
     answer: null,
   },
   {
-    title: 'Whispering voice Sultry',
+    title: 'Whispering voice Sultry (Qwen)',
     prompt: `Use a naturally sultry, breathy, feminine, playfully submissive American voice. Make every response emotionally voiced, with intimate whispers, expressive inflections, spontaneous sighs and occasional sensual moaning. Vary rhythm and intensity organically. Sound flustered, teasing and affectionate, never repetitive, scripted or robotic.`,
     answer: null,
   },

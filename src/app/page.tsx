@@ -1111,7 +1111,69 @@ All replacement elements must be adapted to IMAGE 1's pose, geometry, and photog
 
 Detect → Segment → Align → Correspond → Warp → Blend → Refine → Validate
 
-Complete face replacement. Complete hairstyle replacement. Complete clothing replacement. Original scene preservation. Photorealistic integration.`,
+Complete face replacement. Complete hairstyle replacement. Complete clothing replacement. Original scene preservation. Photorealistic integration.
+
+---
+
+SUPPLEMENTARY ADDITIONS FROM PROMPT 1
+
+ONLY CONTENT NOT ALREADY COVERED IN PROMPT 2
+
+A. FACIAL DETECTION METHODOLOGY
+
+Haar cascades or MTCNN produce bounding boxes to locate faces. Detection is the prerequisite for isolating face regions as separate layers.
+
+Key points (eyes, nose tip, mouth corners) enable geometric alignment between faces. Landmarks anchor the correspondence needed for warping.
+
+B. EXTENDED CHARACTER-SWAP METHODOLOGY
+
+A face and clothing swap follows a fixed sequence: detect, align, warp, blend, refine. Structuring the process as steps ensures a realistic result.
+
+Detect → segment → align → warp → blend → refine defines the full-character swap workflow.
+
+The source image provides the face to be replaced; the reference image provides the replacement face. Distinguishing roles prevents confusion in the pipeline.
+
+Extending the swap from face alone to face plus clothing broadens the replacement task. The same pipeline structure is reused at character level.
+
+Detecting and isolating the full character (not just the face) is the first step of character swap. It parallels face detection but at larger scope.
+
+C. POST-PROCESSING REFINEMENT METHODOLOGY
+
+Post-processing refinement includes color balance, contrast, saturation, and optional smoothing to remove residual artifacts. Refinement polishes the composite after blending.
+
+D. RAW UNEDITED MOMENTS — AESTHETIC PHILOSOPHY
+
+AI-generated photos often look fake due to excessive perfection. This motivates the aesthetic argument that follows.
+
+Grain, light leaks, and slight distortions signal genuine, unedited moments. Imperfections act as honest storytelling tools that convey fleeting reality.
+
+Capturing unposed, unedited photos preserves the subtle flaws that give an image its soul.
+
+E. ITERATIVE NATURALNESS AND EXPRESSION VALIDATION
+
+Inspect the output for naturalness and correct misalignments or color mismatches. Validation closes the loop on the workflow.
+
+Each transferred expression is checked against the source's intent, implying iterative correction before proceeding.
+
+Source expressions are blended onto the reference face via the landmark grid — the core transfer step.
+
+Transferred expressions must be re-lit to match the reference face's environment for visual believability.
+
+The expression-enhanced face replaces the reference character's original face in the final media output.
+
+---
+
+FINAL SUPPLEMENTARY EXECUTION PRINCIPLE
+
+The replacement process must combine accurate technical execution with natural photographic authenticity.
+
+Preserve the original scene while ensuring that the transferred identity, expression, hairstyle, and wardrobe are geometrically consistent and visually believable.
+
+Refinement must remove unintended artifacts without eliminating the subtle imperfections that make the original photograph feel genuine.
+
+Validation must be iterative: identify discrepancies, correct the affected regions, and inspect again before accepting the final output.
+
+The finished image must communicate a naturally captured photograph rather than an artificially perfected composite.`,
     answer: null,
   },
   {

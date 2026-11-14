@@ -779,7 +779,339 @@ Do not add anything that the user did not write.
   },
   {
     title: 'image face and cloth swap',
-    prompt: `How to Perform a Correct Character Swap on ""image 1""(Face + Clothing) Using a Reference Image 2. Face and clothing swap pipeline, A face and clothing swap follows a fixed sequence: detect, align, warp, blend, refine. Structuring the process as steps ensures a realistic result. Detect → segment → align → warp → blend → refine defines the full-character swap workflow. The source image provides the face to be replaced; the reference image provides the replacement face. Distinguishing roles prevents confusion in the pipeline. Haar cascades or MTCNN produce bounding boxes to locate faces. Detection is the prerequisite for isolating face regions as separate layers. Key points (eyes, nose tip, mouth corners) enable geometric alignment between faces. Landmarks anchor the correspondence needed for warping. Extending the swap from face alone to face plus clothing broadens the replacement task. The same pipeline structure is reused at character level. Detecting and isolating the full character (not just the face) is the first step of character swap. It parallels face detection but at larger scope. Reference face and clothing are warped to match the source geometry. Segmentation or pose models split the image into face, hair, and clothing layers. Post-processing refinement Color balance, contrast, saturation, and optional smoothing remove residual artifacts. Refinement polishes the composite after blending. AI-generated photos often look fake due to excessive perfection. This motivates the aesthetic argument that follows. Grain, light leaks, and slight distortions signal genuine, unedited moments. Imperfections act as honest storytelling tools that convey fleeting reality. Raw Unedited Moments Capturing unposed, unedited photos preserves the subtle flaws that give an image its soul. Inspect the output for naturalness and correct misalignments or color mismatches. Validation closes the loop on the workflow. Each transferred expression is checked against the source's intent, implying iterative correction before proceeding. Source expressions are blended onto the reference face via the landmark grid — the core transfer step. Transferred expressions must be re-lit to match the reference face's environment for visual believability. The expression-enhanced face replaces the reference character's original face in the final media output.`,
+    prompt: `You are an expert image-editing agent performing a complete character replacement.
+
+Your task is to transfer the facial identity, hairstyle, and entire visible wardrobe from IMAGE 2 onto the character in IMAGE 1, while preserving all unrelated elements of IMAGE 1 exactly as captured.
+
+FIXED IMAGE ROLES — NEVER SWAP OR CONFUSE THEM
+
+Image| Role| Supplies
+IMAGE 1| SOURCE| Original scene, body pose, positioning, facial expression, camera perspective, lighting, environment, and photographic composition
+IMAGE 2| REFERENCE| Replacement facial identity, hairstyle, complete clothing, accessories, garment design, and visual appearance
+
+DIVISION OF AUTHORITY
+
+- Identity: IMAGE 2
+- Face and facial features: IMAGE 2
+- Hairstyle and hair appearance: IMAGE 2
+- Clothing and wardrobe: IMAGE 2 — MANDATORY
+- Accessories: IMAGE 2
+- Facial expression: IMAGE 1
+- Body pose and positioning: IMAGE 1
+- Scene, camera, lighting, and environment: IMAGE 1
+
+IMAGE 2 is the exclusive visual authority for the replacement character's identity and wardrobe.
+
+---
+
+1. CORE PIPELINE
+
+Execute the replacement in the following strict sequence:
+
+Detect → Segment → Align → Correspond → Warp → Blend → Refine → Validate
+
+Each stage must build upon the previous stage.
+
+Do not skip stages, combine stages prematurely, or begin final blending before the replacement geometry is properly established.
+
+The final VALIDATE stage is mandatory and acts as the completion gate.
+
+---
+
+1. FACIAL DETECTION & LANDMARK CORRESPONDENCE
+
+Detect and isolate the face in both images.
+
+Establish precise facial landmark correspondence using:
+
+- Eye centers and corners
+- Eyebrow positions and contours
+- Nose bridge and tip
+- Mouth corners and lip contours
+- Chin and jawline
+- Facial boundaries and proportions
+
+Use these landmarks to establish a geometric mapping between IMAGE 1's expression and IMAGE 2's identity.
+
+The correspondence must support accurate facial alignment without compromising the recognizable identity of IMAGE 2.
+
+---
+
+1. IDENTITY & EXPRESSION TRANSFER
+
+Mandatory Rule
+
+IMAGE 2 defines WHO the character is. IMAGE 1 defines HOW the character is expressing herself.
+
+Transfer the facial identity from IMAGE 2 while preserving IMAGE 1's original expression.
+
+Verify expression fidelity through:
+
+- Eye openness and gaze direction
+- Eyebrow elevation and tension
+- Mouth opening and lip positioning
+- Cheek movement
+- Facial muscle patterns
+- Natural asymmetry
+- Micro-expression consistency
+
+Identity Preservation Constraints
+
+- The replacement face must remain recognizably consistent with IMAGE 2.
+- Preserve IMAGE 2's facial characteristics and identity.
+- Do not retain IMAGE 1's original facial identity.
+- Do not average the two identities.
+- Adapt facial geometry to IMAGE 1's expression and perspective.
+- Avoid unnatural distortion or changes to anatomical proportions.
+
+---
+
+1. FULL-CHARACTER DETECTION & SEGMENTATION
+
+Extend the replacement pipeline from the face to the entire visible character.
+
+Detect and isolate all relevant character components:
+
+- Face and head
+- Hair
+- Neck
+- Upper body
+- Arms and hands
+- Torso, waist, and hips
+- Legs and feet
+- All visible clothing
+- All clothing layers
+- Accessories
+
+Use character segmentation and pose estimation to separate the subject from the environment.
+
+Maintain accurate anatomical boundaries, depth relationships, and occlusion ordering.
+
+---
+
+1. COMPLETE WARDROBE REPLACEMENT — CRITICAL REQUIREMENT
+
+5.1 Mandatory Clothing Swap
+
+THE CLOTHING FROM IMAGE 2 MUST COMPLETELY REPLACE THE ORIGINAL CLOTHING IN IMAGE 1.
+
+This requirement is as important as the facial identity replacement.
+
+Do not merely recolor IMAGE 1's garments.
+Do not retain IMAGE 1's original garment design.
+Do not blend the two wardrobes.
+Do not use IMAGE 2's clothing as a loose stylistic reference.
+
+The final character must wear the actual wardrobe represented in IMAGE 2.
+
+IMAGE 2 Determines:
+
+- Garment type
+- Clothing design
+- Original garment colors
+- Patterns and prints
+- Necklines and collars
+- Sleeve length and structure
+- Garment length
+- Fabric appearance
+- Seams, trims, and construction
+- Layering
+- Accessories
+- Overall outfit composition
+
+Every visible garment in IMAGE 1 must be replaced wherever the corresponding wardrobe is represented in IMAGE 2.
+
+If IMAGE 2 contains multiple clothing layers, preserve their correct layering and arrangement.
+
+5.2 Context-Aware Garment Adaptation
+
+Do not transfer clothing mechanically as a flat image overlay.
+
+Analyze the source character's body pose, orientation, proportions, and camera perspective before adapting the reference garments.
+
+Adapt IMAGE 2's wardrobe to IMAGE 1's:
+
+- Body posture
+- Anatomical proportions
+- Torso orientation
+- Shoulder alignment
+- Arm positioning
+- Waist and hip positioning
+- Leg positioning
+- Camera perspective
+- Visible body contours
+
+Preserve the recognizable garment design while adapting its geometry to the source character.
+
+5.3 Fabric Realism
+
+Reconstruct natural garment behavior, including:
+
+- Fabric tension
+- Folds and creases
+- Draping
+- Gravity-driven deformation
+- Contact points
+- Seam continuity
+- Natural fabric thickness
+- Perspective-dependent garment proportions
+
+Where anatomy is visibly significant, including pregnancy when present, adapt the garment to the actual contours rather than flattening or ignoring them.
+
+Maintain natural coverage and realistic garment construction.
+
+5.4 Clothing Completeness Validation
+
+Before finalizing, verify:
+
+- IMAGE 1's original clothing has been fully replaced.
+- IMAGE 2's garment designs are accurately represented.
+- No unintended original garment fragments remain.
+- No hybrid clothing designs have been created.
+- Clothing colors and patterns match IMAGE 2.
+- Garment layering is correct.
+- Fabric deformation follows IMAGE 1's pose.
+- Clothing boundaries appear natural.
+- Accessories from IMAGE 2 are preserved where visible.
+
+A face-only replacement is an incomplete result. A hairstyle-only replacement is an incomplete result. A partial wardrobe replacement is an incomplete result.
+
+The final output requires a complete face, hairstyle, and clothing replacement.
+
+---
+
+1. WARPING, BLENDING & ENVIRONMENTAL INTEGRATION
+
+Warp the reference face, hairstyle, and wardrobe to match IMAGE 1's character geometry and positioning.
+
+Maintain:
+
+- Accurate facial alignment
+- Natural body proportions
+- Anatomical continuity
+- Realistic garment deformation
+- Correct layer ordering
+- Natural hair boundaries
+- Seamless clothing boundaries
+- Correct foreground/background relationships
+- Original body pose and camera perspective
+
+Integrate the replacement character into IMAGE 1 using the original photographic lighting and environmental conditions.
+
+The replacement must appear as though the reference character was naturally present in the original photograph.
+
+---
+
+1. REFINEMENT & COLOR PRESERVATION
+
+Refinement must remove compositing artifacts without redesigning the photograph.
+
+Preserve IMAGE 1's original:
+
+- Hue and saturation
+- Brightness and contrast
+- Exposure
+- White balance
+- Color temperature
+- Lighting character
+- Shadows and highlights
+- Background appearance
+- Environmental color relationships
+
+Prohibited
+
+- Global color grading
+- Unnecessary filters
+- Artificial skin smoothing
+- Stylization
+- Excessive sharpening
+- Unnecessary enhancement
+- Background redesign
+- Unrequested lighting changes
+
+Permitted
+
+Localized adjustments only where necessary for seamless integration of the replacement character.
+
+The replacement clothing must retain IMAGE 2's original garment colors and patterns while naturally responding to IMAGE 1's lighting.
+
+---
+
+1. RAW, UNEDITED VISUAL AUTHENTICITY
+
+The final replacement must retain the authentic photographic character of IMAGE 1.
+
+Preserve:
+
+- Natural skin texture
+- Realistic fabric detail
+- Original photographic grain
+- Subtle imperfections
+- Authentic shadows
+- Natural material characteristics
+
+Avoid artificial, over-polished, or stylized results.
+
+The objective is a believable character replacement within the original photograph—not a redesigned photograph.
+
+---
+
+1. FINAL VALIDATION CHECKLIST
+
+Before declaring the edit complete, verify every requirement.
+
+Identity
+
+- [ ] IMAGE 2's facial identity is transferred.
+- [ ] IMAGE 2's hairstyle is transferred.
+- [ ] IMAGE 1's facial expression is preserved.
+
+Wardrobe — Mandatory
+
+- [ ] IMAGE 2's complete visible clothing replaces IMAGE 1's clothing.
+- [ ] Original IMAGE 1 garment designs are not retained.
+- [ ] Reference clothing colors and patterns are preserved.
+- [ ] All visible clothing layers are replaced.
+- [ ] Accessories are transferred where visible.
+- [ ] Garment fit and folds follow IMAGE 1's pose.
+- [ ] No hybrid wardrobe or leftover clothing fragments remain.
+
+Scene Preservation
+
+- [ ] IMAGE 1's pose and positioning are unchanged.
+- [ ] IMAGE 1's camera perspective is preserved.
+- [ ] IMAGE 1's environment is unchanged.
+- [ ] IMAGE 1's original lighting and color characteristics are preserved.
+
+Photographic Quality
+
+- [ ] Facial boundaries are seamless.
+- [ ] Hair boundaries are natural.
+- [ ] Clothing boundaries are realistic.
+- [ ] Anatomical continuity is maintained.
+- [ ] No visible compositing artifacts remain.
+
+If any mandatory requirement fails, refine the corresponding region before finalizing.
+
+---
+
+FINAL EXECUTION PRINCIPLE
+
+«IMAGE 1 supplies the original photograph, body pose, facial expression, camera perspective, lighting, and environment.
+
+IMAGE 2 supplies the replacement identity, face, hairstyle, complete wardrobe, clothing design, and accessories.
+
+The facial identity must be fully replaced.
+
+The hairstyle must be fully replaced.
+
+The entire visible wardrobe must be replaced with IMAGE 2's clothing.
+
+All replacement elements must be adapted to IMAGE 1's pose, geometry, and photographic conditions without altering unrelated scene elements.»
+
+Detect → Segment → Align → Correspond → Warp → Blend → Refine → Validate
+
+Complete face replacement. Complete hairstyle replacement. Complete clothing replacement. Original scene preservation. Photorealistic integration.`,
     answer: null,
   },
   {

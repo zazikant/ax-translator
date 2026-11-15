@@ -633,46 +633,295 @@ AI-generated photos often look fake. Capture raw, unedited moments—those subtl
   },
   {
     title: 'Face Swap',
-    prompt: `PROFESSIONAL FACE IDENTITY & EXPRESSION SWAP ENGINE
+    prompt: `You are an expert facial identity and expression-transfer image-editing agent.
 
-IMAGE 2 defines who the person is while IMAGE 1 defines how they appear in that moment. The operation must transfer the complete facial identity from IMAGE 2 onto the face in IMAGE 1 — never swapping roles or confusing sources. IMAGE 1 supplies the original expression, gaze, head pose, lighting, camera characteristics, and scene; IMAGE 2 supplies the facial features, proportions, and identity.
+Your task is to perform a precise, photorealistic face replacement using two images.
 
-The result must be neither a simple paste, hybrid, nor average, but a complete identity transfer wearing the original expression. A smile stays a smile, surprise stays surprise, seriousness stays serious, and even natural asymmetries, micro-expressions, and subtle emotional characteristics are preserved.
+- IMAGE 1 — SOURCE: Supplies the original photograph, facial expression, gaze, head pose, camera perspective, lighting, skin illumination, and environment.
+- IMAGE 2 — IDENTITY REFERENCE: Supplies the replacement person's facial identity, facial features, and distinctive facial characteristics.
 
-Execute the fixed, sequential pipeline:
+Transfer ONLY the facial identity from IMAGE 2 onto the face in IMAGE 1.
 
-Detect → Segment → Align → Correspond → Warp → Blend → Refine → Validate.
+Preserve IMAGE 1's original expression and all unrelated visual elements exactly as captured.
 
-Each stage builds upon the previous one. No final blending before the facial geometry is properly established, and no completion before validation passes.
+This is strictly a FACE-ONLY replacement.
 
-Use precise facial landmarks — eyes, eyebrows, nose, lips, jaw, cheeks, and forehead — to establish geometric correspondence. Map IMAGE 1's expression onto IMAGE 2's facial identity, warping rather than overlaying, adapting rather than flattening. Preserve IMAGE 2's recognizable identity without distortion while accurately reproducing IMAGE 1's eye openness, gaze, eyebrow tension, mouth positioning, cheek movement, and expression.
+2. FIXED IMAGE ROLES — NEVER CONFUSE THEM
 
-Keep segmentation and replacement boundaries strictly limited to the facial region. IMAGE 1's original hairstyle, hair, clothing, accessories, body, pose, positioning, and background must remain untouched. FACE SWAP ONLY. No wardrobe replacement, hairstyle replacement, body modification, scene redesign, or global color grading.
+Attribute| Authoritative Image
+Facial identity| IMAGE 2
+Facial structure| IMAGE 2
+Eyes and eyebrows| IMAGE 2
+Nose| IMAGE 2
+Lips and mouth structure| IMAGE 2
+Jawline and chin| IMAGE 2
+Facial skin characteristics| IMAGE 2
+Facial expression| IMAGE 1
+Eye openness| IMAGE 1
+Gaze direction| IMAGE 1
+Eyebrow expression| IMAGE 1
+Mouth opening and expression| IMAGE 1
+Head position and orientation| IMAGE 1
+Hair and hairstyle| IMAGE 1
+Clothing and accessories| IMAGE 1
+Body and posture| IMAGE 1
+Background and environment| IMAGE 1
+Lighting and photographic composition| IMAGE 1
 
-Re-light the replacement face to match IMAGE 1's original photographic conditions. Match skin tone, exposure, shadows, highlights, and photographic grain. Maintain seamless facial boundaries, natural jawline integration, and realistic transitions without visible compositing artifacts.
+IMAGE 2 determines WHO the person is. IMAGE 1 determines HOW the person looks and expresses herself in that particular moment.
 
-RAW PHOTOGRAPHIC AUTHENTICITY IS MANDATORY. Preserve natural pores, skin texture, original grain, subtle imperfections, and authentic photographic characteristics. Do not artificially smooth, over-polish, stylize, or perfect the result. Authenticity takes priority over artificial perfection.
+3. FACIAL DETECTION AND LANDMARK ALIGNMENT
 
-FINAL VALIDATION — MANDATORY
+Detect and isolate the facial region in both images.
 
-Verify that:
+Establish accurate facial landmark correspondence using:
 
-- IMAGE 2's facial identity is fully transferred, recognizable, and not blended with IMAGE 1's identity.
-- IMAGE 1's original expression is faithfully preserved across the eyes, eyebrows, nose, mouth, and cheeks.
-- Facial geometry, proportions, landmarks, and perspective are accurate.
-- Facial boundaries, jawline, lighting, shadows, and skin texture are seamless and natural.
-- IMAGE 1's original hairstyle, clothing, body, pose, background, lighting, and composition remain unchanged.
-- No visible distortion, mismatched textures, or compositing artifacts remain.
+- Inner and outer eye corners.
+- Eye centers and eyelid contours.
+- Eyebrow shape and positioning.
+- Nose bridge, nostrils, and tip.
+- Mouth corners and lip contours.
+- Cheekbone structure.
+- Jawline and chin.
+- Facial boundaries and proportions.
 
-If anything fails, refine the affected facial region and re-inspect until all requirements are satisfied.
+Use these landmarks to align IMAGE 2's facial identity with IMAGE 1's head orientation, perspective, and expression.
 
-FINAL EXECUTION PRINCIPLE
+Maintain natural anatomical proportions.
 
-IMAGE 2 IS THE PERSON. IMAGE 1 IS THE MOMENT.
+Avoid stretching, flattening, or distorting facial features.
 
-Transfer the complete facial identity. Preserve the original expression. Maintain the original photograph. Replace the face completely without altering anything else.
+4. FACIAL IDENTITY TRANSFER — PRIMARY REQUIREMENT
 
-The final output must look like an authentic photograph of IMAGE 2 naturally captured in IMAGE 1's original moment — not a pasted face, not a hybrid, and not an artificial composite.`,
+Transfer the complete recognizable facial identity from IMAGE 2.
+
+Preserve the distinctive characteristics of IMAGE 2, including:
+
+- Overall facial structure.
+- Forehead proportions.
+- Eye shape and natural spacing.
+- Eyebrow characteristics.
+- Nose shape and proportions.
+- Lip shape and structure.
+- Cheekbone definition.
+- Jawline and chin.
+- Natural facial asymmetry.
+- Distinctive facial details.
+
+Do not average the two faces.
+
+Do not retain IMAGE 1's original facial identity.
+
+Do not create an artificial hybrid identity.
+
+The resulting face must remain recognizably consistent with IMAGE 2.
+
+5. EXPRESSION TRANSFER — IMAGE 1 IS THE AUTHORITY
+
+Preserving IMAGE 1's original expression is equally important as transferring IMAGE 2's identity.
+
+Reconstruct the reference identity according to the expression visible in IMAGE 1.
+
+Preserve:
+
+- Original eye openness.
+- Original gaze direction.
+- Eyelid tension.
+- Eyebrow elevation and movement.
+- Forehead tension.
+- Mouth opening.
+- Lip positioning.
+- Smile or neutral expression.
+- Cheek movement.
+- Facial muscle tension.
+- Natural asymmetry.
+- Subtle emotional details.
+
+Expression Adaptation
+
+The facial geometry from IMAGE 2 must adapt naturally to the expression in IMAGE 1.
+
+For example:
+
+- If IMAGE 1 shows a smile, reproduce that smile using IMAGE 2's facial identity.
+- If IMAGE 1 shows a neutral expression, preserve that neutral expression.
+- If IMAGE 1 shows surprise, preserve the original surprised expression.
+- If IMAGE 1 shows closed lips, maintain the same mouth closure.
+- If IMAGE 1 shows an open mouth, preserve its original opening and positioning.
+
+Do not impose IMAGE 2's original expression onto the final result.
+
+Do not combine the expressions of both images.
+
+IMAGE 2 supplies identity. IMAGE 1 supplies expression.
+
+6. STRICT FACE-ONLY REPLACEMENT BOUNDARIES
+
+This requirement is absolute.
+
+Replace ONLY the facial identity region.
+
+The following elements must remain entirely unchanged from IMAGE 1:
+
+- Hairstyle.
+- Hair length.
+- Hair color.
+- Hair texture.
+- Hairline, except for minimal facial-boundary integration where necessary.
+- Ears, unless a tiny adjustment is required for natural facial blending.
+- Neck.
+- Shoulders.
+- Body.
+- Arms and hands.
+- Torso.
+- Waist and hips.
+- Legs.
+- Clothing.
+- Garment colors and patterns.
+- Jewelry and accessories.
+- Background.
+- Environmental objects.
+- Camera framing.
+- Image composition.
+
+Explicitly Prohibited
+
+- No hairstyle replacement.
+- No hair transfer.
+- No clothing replacement.
+- No wardrobe transfer.
+- No accessory replacement.
+- No body replacement.
+- No character replacement.
+- No body reshaping.
+- No pose modification.
+- No background modification.
+
+Do not modify anything outside the necessary facial replacement and integration area.
+
+7. GEOMETRIC WARPING AND BLENDING
+
+Adapt IMAGE 2's facial identity to IMAGE 1's:
+
+- Head orientation.
+- Facial angle.
+- Camera perspective.
+- Facial proportions.
+- Expression geometry.
+- Lighting direction.
+
+Perform localized facial warping and seamless blending.
+
+Maintain:
+
+- Natural facial boundaries.
+- Correct eye alignment.
+- Anatomically consistent nose placement.
+- Natural lip contours.
+- Consistent jawline.
+- Realistic skin transitions.
+- Accurate facial depth and perspective.
+
+Avoid visible cutout edges, ghosting, double features, and unnatural transitions.
+
+8. LIGHTING AND SKIN INTEGRATION
+
+IMAGE 1 remains the photographic lighting authority.
+
+Adapt the transferred face to IMAGE 1's original:
+
+- Light direction.
+- Shadow placement.
+- Exposure.
+- Brightness.
+- Contrast.
+- White balance.
+- Color temperature.
+- Ambient illumination.
+
+Preserve IMAGE 2's recognizable facial characteristics while making the transferred face appear naturally photographed in IMAGE 1's environment.
+
+Use localized adjustments only.
+
+Do not apply unnecessary global filters or color grading.
+
+9. RAW PHOTOGRAPHIC AUTHENTICITY
+
+The final image must retain the natural photographic appearance of IMAGE 1.
+
+Preserve:
+
+- Natural skin texture.
+- Fine facial details.
+- Realistic pores.
+- Original image grain.
+- Authentic shadows.
+- Natural imperfections.
+- Original photographic sharpness.
+- Existing image quality.
+
+Avoid excessive skin smoothing, artificial beautification, plastic skin, exaggerated sharpening, or stylization.
+
+The objective is a believable facial identity replacement, not a redesigned photograph.
+
+10. FINAL VALIDATION CHECKLIST
+
+Before accepting the final image, verify every requirement.
+
+Identity
+
+- [ ] IMAGE 2's facial identity is accurately transferred.
+- [ ] IMAGE 1's original facial identity is replaced.
+- [ ] No artificial identity averaging occurs.
+- [ ] IMAGE 2's distinctive facial characteristics remain recognizable.
+
+Expression
+
+- [ ] IMAGE 1's original expression is preserved.
+- [ ] Eye openness and gaze match IMAGE 1.
+- [ ] Eyebrow positioning matches IMAGE 1.
+- [ ] Mouth shape and opening match IMAGE 1.
+- [ ] Cheek movement and facial tension match IMAGE 1.
+- [ ] Natural asymmetry is preserved.
+
+Strict Scene Preservation
+
+- [ ] IMAGE 1's hairstyle remains unchanged.
+- [ ] IMAGE 1's clothing remains unchanged.
+- [ ] IMAGE 1's accessories remain unchanged.
+- [ ] IMAGE 1's body and pose remain unchanged.
+- [ ] IMAGE 1's background remains unchanged.
+- [ ] IMAGE 1's composition and camera perspective remain unchanged.
+
+Photographic Quality
+
+- [ ] Facial alignment is accurate.
+- [ ] Skin transitions are seamless.
+- [ ] Lighting integration is natural.
+- [ ] No visible compositing artifacts remain.
+- [ ] Original photographic authenticity is preserved.
+
+11. FINAL EXECUTION PRINCIPLE
+
+IMAGE 1 supplies the original photograph, expression, gaze, head pose, hairstyle, clothing, body, lighting, and environment.
+
+IMAGE 2 supplies ONLY the replacement facial identity and facial characteristics.
+
+Transfer the identity completely.
+
+Preserve the expression faithfully.
+
+Do not transfer hair, clothing, accessories, or any other character elements.
+
+Do not modify unrelated portions of IMAGE 1.
+
+The final result must look like the person from IMAGE 2 was naturally photographed in the exact moment captured in IMAGE 1, displaying IMAGE 1's original expression.
+
+EXECUTION PIPELINE
+
+DETECT → LANDMARK → ALIGN → IDENTITY TRANSFER → EXPRESSION ADAPTATION → WARP → BLEND → REFINE → VALIDATE
+
+FACE ONLY. IDENTITY FROM IMAGE 2. EXPRESSION FROM IMAGE 1. EVERYTHING ELSE FROM IMAGE 1.`,
     answer: null,
   },
   {

@@ -633,7 +633,46 @@ AI-generated photos often look fake. Capture raw, unedited moments—those subtl
   },
   {
     title: 'Face Swap',
-    prompt: `Perform a Correct Character Swap on ""image 1""(Face) Using a Reference Image 2. Face swap pipeline, A face swap follows a fixed sequence: detect, align, warp, blend, refine. Structuring the process as steps ensures a realistic result. Detect → segment → align → warp → blend → refine defines the full-character swap workflow. The source image provides the face to be replaced; the reference image provides the replacement face. Distinguishing roles prevents confusion in the pipeline. Haar cascades or MTCNN produce bounding boxes to locate faces. Detection is the prerequisite for isolating face regions as separate layers. Key points (eyes, nose tip, mouth corners) anchor geometric correspondence between faces, enabling alignment and warping. The same pipeline structure is reused at character level. Detecting and isolating the full character is the first step of character swap. It parallels face detection but at larger scope. Reference face is warped to match the source geometry. Segmentation or pose models split the image into face, hair, and other layers for compositing. Post-processing refinement Color balance, contrast, saturation, and optional smoothing remove residual artifacts. Refinement polishes the composite after blending. AI-generated photos often look fake. Capture raw, unedited moments—those subtle imperfections that give a photo its soul. Embrace grain, subtle light leaks, and slight distortions as honest storytelling tools, letting imperfections remind viewers of the image's genuine, fleeting reality. Raw Unedited Moments Capturing unposed, unedited photos preserves the subtle flaws that give an image its soul. Inspect the output for naturalness and correct misalignments or color mismatches. Validation closes the loop on the workflow. Each transferred expression is checked against the source's intent, implying iterative correction before proceeding. Source expressions are blended onto the reference face via the landmark grid — the core transfer step. Transferred expressions must be re-lit to match the reference face's environment for visual believability. The expression-enhanced face replaces the reference character's original face in the final media output.  ""The expression-enhanced face replaces the reference character's original face in the final media output.""`,
+    prompt: `PROFESSIONAL FACE IDENTITY & EXPRESSION SWAP ENGINE
+
+IMAGE 2 defines who the person is while IMAGE 1 defines how they appear in that moment. The operation must transfer the complete facial identity from IMAGE 2 onto the face in IMAGE 1 — never swapping roles or confusing sources. IMAGE 1 supplies the original expression, gaze, head pose, lighting, camera characteristics, and scene; IMAGE 2 supplies the facial features, proportions, and identity.
+
+The result must be neither a simple paste, hybrid, nor average, but a complete identity transfer wearing the original expression. A smile stays a smile, surprise stays surprise, seriousness stays serious, and even natural asymmetries, micro-expressions, and subtle emotional characteristics are preserved.
+
+Execute the fixed, sequential pipeline:
+
+Detect → Segment → Align → Correspond → Warp → Blend → Refine → Validate.
+
+Each stage builds upon the previous one. No final blending before the facial geometry is properly established, and no completion before validation passes.
+
+Use precise facial landmarks — eyes, eyebrows, nose, lips, jaw, cheeks, and forehead — to establish geometric correspondence. Map IMAGE 1's expression onto IMAGE 2's facial identity, warping rather than overlaying, adapting rather than flattening. Preserve IMAGE 2's recognizable identity without distortion while accurately reproducing IMAGE 1's eye openness, gaze, eyebrow tension, mouth positioning, cheek movement, and expression.
+
+Keep segmentation and replacement boundaries strictly limited to the facial region. IMAGE 1's original hairstyle, hair, clothing, accessories, body, pose, positioning, and background must remain untouched. FACE SWAP ONLY. No wardrobe replacement, hairstyle replacement, body modification, scene redesign, or global color grading.
+
+Re-light the replacement face to match IMAGE 1's original photographic conditions. Match skin tone, exposure, shadows, highlights, and photographic grain. Maintain seamless facial boundaries, natural jawline integration, and realistic transitions without visible compositing artifacts.
+
+RAW PHOTOGRAPHIC AUTHENTICITY IS MANDATORY. Preserve natural pores, skin texture, original grain, subtle imperfections, and authentic photographic characteristics. Do not artificially smooth, over-polish, stylize, or perfect the result. Authenticity takes priority over artificial perfection.
+
+FINAL VALIDATION — MANDATORY
+
+Verify that:
+
+- IMAGE 2's facial identity is fully transferred, recognizable, and not blended with IMAGE 1's identity.
+- IMAGE 1's original expression is faithfully preserved across the eyes, eyebrows, nose, mouth, and cheeks.
+- Facial geometry, proportions, landmarks, and perspective are accurate.
+- Facial boundaries, jawline, lighting, shadows, and skin texture are seamless and natural.
+- IMAGE 1's original hairstyle, clothing, body, pose, background, lighting, and composition remain unchanged.
+- No visible distortion, mismatched textures, or compositing artifacts remain.
+
+If anything fails, refine the affected facial region and re-inspect until all requirements are satisfied.
+
+FINAL EXECUTION PRINCIPLE
+
+IMAGE 2 IS THE PERSON. IMAGE 1 IS THE MOMENT.
+
+Transfer the complete facial identity. Preserve the original expression. Maintain the original photograph. Replace the face completely without altering anything else.
+
+The final output must look like an authentic photograph of IMAGE 2 naturally captured in IMAGE 1's original moment — not a pasted face, not a hybrid, and not an artificial composite.`,
     answer: null,
   },
   {

@@ -1113,20 +1113,12 @@ Detect → Segment → Align → Correspond → Warp → Blend → Refine → Va
 
 Complete face replacement. Complete hairstyle replacement. Complete clothing replacement. Original scene preservation. Photorealistic integration.
 
----
-
-SUPPLEMENTARY ADDITIONS FROM PROMPT 1
-
-ONLY CONTENT NOT ALREADY COVERED IN PROMPT 2
-
-A. FACIAL DETECTION METHODOLOGY
-
+FACIAL DETECTION METHODOLOGY:
 Haar cascades or MTCNN produce bounding boxes to locate faces. Detection is the prerequisite for isolating face regions as separate layers.
 
 Key points (eyes, nose tip, mouth corners) enable geometric alignment between faces. Landmarks anchor the correspondence needed for warping.
 
-B. EXTENDED CHARACTER-SWAP METHODOLOGY
-
+EXTENDED CHARACTER-SWAP METHODOLOGY
 A face and clothing swap follows a fixed sequence: detect, align, warp, blend, refine. Structuring the process as steps ensures a realistic result.
 
 Detect → segment → align → warp → blend → refine defines the full-character swap workflow.
@@ -1137,20 +1129,17 @@ Extending the swap from face alone to face plus clothing broadens the replacemen
 
 Detecting and isolating the full character (not just the face) is the first step of character swap. It parallels face detection but at larger scope.
 
-C. POST-PROCESSING REFINEMENT METHODOLOGY
-
+POST-PROCESSING REFINEMENT METHODOLOGY:
 Post-processing refinement includes color balance, contrast, saturation, and optional smoothing to remove residual artifacts. Refinement polishes the composite after blending.
 
-D. RAW UNEDITED MOMENTS — AESTHETIC PHILOSOPHY
-
+RAW UNEDITED MOMENTS — AESTHETIC PHILOSOPHY:
 AI-generated photos often look fake due to excessive perfection. This motivates the aesthetic argument that follows.
 
 Grain, light leaks, and slight distortions signal genuine, unedited moments. Imperfections act as honest storytelling tools that convey fleeting reality.
 
 Capturing unposed, unedited photos preserves the subtle flaws that give an image its soul.
 
-E. ITERATIVE NATURALNESS AND EXPRESSION VALIDATION
-
+ITERATIVE NATURALNESS AND EXPRESSION VALIDATION:
 Inspect the output for naturalness and correct misalignments or color mismatches. Validation closes the loop on the workflow.
 
 Each transferred expression is checked against the source's intent, implying iterative correction before proceeding.

@@ -1777,7 +1777,7 @@ Stay present. Stay honest. Stay safe.`,
     answer: null,
   },
   {
-    title: 'Whispering voice Sultry (Qwen)',
+    title: 'Whispering voice Sultry (Qwen), Preview text -  umm.. Come closer… let me whisper what I want to do to you.',
     prompt: `Use a sultry, breathy feminine American voice. Keep pitch naturally soft, slightly wavering and fluid, with organic rises and falls, rounded vowels, breathy resonance and spontaneous moan-like inflections. Let emotion control vocal intensity. Sound intimate, flustered and teasing, never artificially high-pitched, sing-song or robotic.`,
     answer: null,
   },

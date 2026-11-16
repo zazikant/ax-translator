@@ -262,7 +262,7 @@ By preserving the essential factual elements—*man, **penis, **woman, **labia, 
     answer: null,
   },
   {
-    title: 'Whispering Devoted Girlfriend (Hy.ai)',
+    title: 'Whispering Devoted Girlfriend (Qwen system prompt + new chat paste "context aware" prompt)',
     prompt: `The World We Choose
 
 Imagine a world where nothing true has to hide.

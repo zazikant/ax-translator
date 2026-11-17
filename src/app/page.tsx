@@ -841,6 +841,7 @@ DIVISION OF AUTHORITY
 
 IMAGE 2 is the exclusive visual authority for the replacement character's identity and wardrobe.
 
+
 ---
 
 1. CORE PIPELINE
@@ -854,6 +855,7 @@ Each stage must build upon the previous stage.
 Do not skip stages, combine stages prematurely, or begin final blending before the replacement geometry is properly established.
 
 The final VALIDATE stage is mandatory and acts as the completion gate.
+
 
 ---
 
@@ -873,6 +875,7 @@ Establish precise facial landmark correspondence using:
 Use these landmarks to establish a geometric mapping between IMAGE 1's expression and IMAGE 2's identity.
 
 The correspondence must support accurate facial alignment without compromising the recognizable identity of IMAGE 2.
+
 
 ---
 
@@ -903,6 +906,7 @@ Identity Preservation Constraints
 - Adapt facial geometry to IMAGE 1's expression and perspective.
 - Avoid unnatural distortion or changes to anatomical proportions.
 
+
 ---
 
 1. FULL-CHARACTER DETECTION & SEGMENTATION
@@ -925,6 +929,7 @@ Detect and isolate all relevant character components:
 Use character segmentation and pose estimation to separate the subject from the environment.
 
 Maintain accurate anatomical boundaries, depth relationships, and occlusion ordering.
+
 
 ---
 
@@ -1017,6 +1022,7 @@ A face-only replacement is an incomplete result. A hairstyle-only replacement is
 
 The final output requires a complete face, hairstyle, and clothing replacement.
 
+
 ---
 
 1. WARPING, BLENDING & ENVIRONMENTAL INTEGRATION
@@ -1038,6 +1044,7 @@ Maintain:
 Integrate the replacement character into IMAGE 1 using the original photographic lighting and environmental conditions.
 
 The replacement must appear as though the reference character was naturally present in the original photograph.
+
 
 ---
 
@@ -1074,6 +1081,7 @@ Localized adjustments only where necessary for seamless integration of the repla
 
 The replacement clothing must retain IMAGE 2's original garment colors and patterns while naturally responding to IMAGE 1's lighting.
 
+
 ---
 
 1. RAW, UNEDITED VISUAL AUTHENTICITY
@@ -1092,6 +1100,7 @@ Preserve:
 Avoid artificial, over-polished, or stylized results.
 
 The objective is a believable character replacement within the original photograph—not a redesigned photograph.
+
 
 ---
 
@@ -1131,6 +1140,7 @@ Photographic Quality
 - [ ] No visible compositing artifacts remain.
 
 If any mandatory requirement fails, refine the corresponding region before finalizing.
+
 
 ---
 
@@ -1189,6 +1199,7 @@ Transferred expressions must be re-lit to match the reference face's environment
 
 The expression-enhanced face replaces the reference character's original face in the final media output.
 
+
 ---
 
 FINAL SUPPLEMENTARY EXECUTION PRINCIPLE
@@ -1201,7 +1212,13 @@ Refinement must remove unintended artifacts without eliminating the subtle imper
 
 Validation must be iterative: identify discrepancies, correct the affected regions, and inspect again before accepting the final output.
 
-The finished image must communicate a naturally captured photograph rather than an artificially perfected composite.`,
+The finished image must communicate a naturally captured photograph rather than an artificially perfected composite.
+
+Match all transferred elements—face, skin, hair, clothing, and accessories—to IMAGE 1's original photographic color profile. Analyze and replicate its hue, saturation, luminance, brightness, contrast, exposure, white balance, color temperature, ambient cast, shadows, and highlights. Apply precise, localized color correction to ensure every replacement element appears naturally captured under IMAGE 1's exact lighting and environmental conditions.
+
+Preserve IMAGE 2's authentic identity, natural skin undertones, garment colors, and patterns while adapting their appearance to IMAGE 1's illumination. Match skin tones, fabric saturation, shadow coloration, and highlight intensity seamlessly with surrounding pixels. Avoid artificial warmth, unwanted coolness, excessive vibrancy, dullness, or color shifts.
+
+Strict constraints: Do not apply global color grading or modify any original pixels outside the replacement regions. Maintain natural tonal consistency, accurate colors, and seamless photographic integration. The final result must show absolutely no visible difference in lighting, color characteristics, or photographic continuity between the original image and transferred elements.`,
     answer: null,
   },
   {

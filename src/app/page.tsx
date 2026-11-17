@@ -1783,7 +1783,7 @@ Stay present. Stay honest. Stay safe.`,
   },
   {
     title: 'Swap Expressions Only',
-    prompt: `"" SOURCE-LOCKED EXPRESSION TRANSFER ENGINE
+    prompt: `SOURCE-LOCKED EXPRESSION TRANSFER ENGINE
 
 EXPRESSION ONLY | ZERO FACIAL REPLACEMENT | ZERO COLOUR TRANSFER
 
@@ -1873,7 +1873,7 @@ IMAGE 1 supplies every facial feature, every facial pixel, and every colour.
 
 IMAGE 2 supplies expression movement only.
 
-SAME ORIGINAL FACE. SAME ORIGINAL EYES. SAME ORIGINAL EYEBROWS. SAME ORIGINAL LIP COLOUR. NEW EXPRESSION ONLY. ""`,
+SAME ORIGINAL FACE. SAME ORIGINAL EYES. SAME ORIGINAL EYEBROWS. SAME ORIGINAL LIP COLOUR. NEW EXPRESSION ONLY.`,
     answer: null,
   },
 ];

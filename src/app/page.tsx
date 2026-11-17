@@ -1781,6 +1781,101 @@ Stay present. Stay honest. Stay safe.`,
     prompt: `Use a sultry, breathy feminine American voice. Keep pitch naturally soft, slightly wavering and fluid, with organic rises and falls, rounded vowels, breathy resonance and spontaneous moan-like inflections. Let emotion control vocal intensity. Sound intimate, flustered and teasing, never artificially high-pitched, sing-song or robotic.`,
     answer: null,
   },
+  {
+    title: 'Swap Expressions Only',
+    prompt: `"" SOURCE-LOCKED EXPRESSION TRANSFER ENGINE
+
+EXPRESSION ONLY | ZERO FACIAL REPLACEMENT | ZERO COLOUR TRANSFER
+
+IMAGE 1 = IMMUTABLE SOURCE FACE.
+IMAGE 2 = EXPRESSION MOVEMENT REFERENCE ONLY.
+
+1. ABSOLUTE IDENTITY LOCK
+
+IMAGE 1 is the actual face to be edited, not a reference for generating another face.
+
+Preserve its original eyes, eyelids, eyebrows, nose, lips, facial anatomy, proportions, and identity.
+
+NEVER replace, regenerate, redraw, synthesize, or reconstruct any facial feature.
+
+1. EXPRESSION-ONLY EXTRACTION
+
+Extract exclusively from IMAGE 2:
+
+- Eyebrow elevation, lowering, and contraction.
+- Eyelid opening, closure, and squint.
+- Eye-region muscular tension.
+- Mouth opening and curvature.
+- Lip movement and mouth-corner displacement.
+- Cheek elevation and expression-related tension.
+
+Transfer movement parameters only. Never transfer reference feature shapes or appearance.
+
+1. FEATURE-LOCKED DEFORMATION
+
+Apply expression movements directly to IMAGE 1's existing facial features.
+
+- Eyes: Preserve original eye shape, iris, pupil, colour, eyelid anatomy, and individual characteristics. Modify only eyelid position and expression-related movement. Never substitute or regenerate eyes.
+- Eyebrows: Preserve original eyebrow pixels, shape, thickness, density, colour, and hair detail. Change only their position, elevation, and expression-related curvature through localized deformation.
+- Lips: Preserve original lip pigmentation, hue, saturation, texture, boundaries, and natural colour. Modify only mouth opening, curvature, and positional movement. Never recolour or redraw lips.
+- Skin: Preserve original complexion, pigmentation, pores, texture, and lighting without colour correction or synthetic reconstruction.
+
+Use source-based landmark displacement and minimal localized geometric warping. Do not use whole-face generation or reference-driven feature reconstruction.
+
+1. HARD PIXEL AND COLOUR LOCK
+
+IMAGE 1 is the exclusive source of all facial pixels and colours.
+
+No colour transfer. No hue shifts. No saturation changes. No lip recolouring. No eye recolouring. No eyebrow recolouring.
+
+No generative repainting of protected facial features.
+
+Preserve original source pixels wherever possible. Where deformation is necessary, interpolate exclusively from neighbouring IMAGE 1 pixels and source-derived texture.
+
+Unaffected facial regions must remain pixel-identical to IMAGE 1.
+
+1. CONFLICT PRIORITY
+
+Apply this strict hierarchy:
+
+1. Preserve original facial identity.
+2. Preserve original feature shapes and anatomy.
+3. Preserve original colours and textures.
+4. Apply requested expression movements.
+5. Preserve all unaffected pixels.
+
+If expression transfer conflicts with identity or appearance preservation, reduce the deformation rather than reconstructing the feature.
+
+1. FINAL VALIDATION
+
+Before accepting the result, verify:
+
+- Original eyes remain the same eyes.
+- Original eyebrows remain the same eyebrows, with only authorized movement.
+- Original lip colour and pigmentation remain unchanged.
+- No facial feature has been replaced or regenerated.
+- No unauthorized colour or texture changes occurred.
+- Only expression-related movements have changed.
+
+Reject any result containing replacement eyes, regenerated eyebrows, altered lip pigmentation, or identity drift.
+
+---
+
+FINAL EXECUTION COMMAND
+
+MOVE, NEVER REPLACE.
+
+DEFORM, NEVER REGENERATE.
+
+PRESERVE, NEVER RECOLOUR.
+
+IMAGE 1 supplies every facial feature, every facial pixel, and every colour.
+
+IMAGE 2 supplies expression movement only.
+
+SAME ORIGINAL FACE. SAME ORIGINAL EYES. SAME ORIGINAL EYEBROWS. SAME ORIGINAL LIP COLOUR. NEW EXPRESSION ONLY. ""`,
+    answer: null,
+  },
 ];
 
 // ─── Examples Scroll Threshold ───────────────────────────────────────────────
